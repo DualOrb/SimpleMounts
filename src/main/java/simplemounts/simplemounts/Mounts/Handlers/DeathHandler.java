@@ -32,8 +32,11 @@ public class DeathHandler implements Listener {
 
         EntityManager.removeMount(player);
 
+        if(event.getEntity().getKiller() instanceof Player) {
+            SimpleMounts.sendPlayerMessage("Your mount has been slain by " + event.getEntity().getKiller().getName() + "!",player);
+        } else {
+            SimpleMounts.sendPlayerMessage("Your mount has died!",player);
+        }
 
-
-        SimpleMounts.sendPlayerMessage("Your mount has been slain by " + event.getEntity().getKiller().getName() + "!",player);
     }
 }

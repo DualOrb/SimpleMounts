@@ -38,10 +38,11 @@ public class Release implements CommandExecutor {
 
         //Correcting to vanilla spawns
         h.setPersistent(false);
+        h.setRemoveWhenFarAway(false);
 
         EntityManager.removeMount(player);
 
-        SimpleMounts.sendPlayerMessage("Your mount rides back into the wilderness...",player);
+        SimpleMounts.sendPlayerMessage("Goodbye my friend...",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
 
         return true;

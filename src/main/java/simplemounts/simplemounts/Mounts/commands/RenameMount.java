@@ -69,7 +69,7 @@ public class RenameMount implements CommandExecutor {
         return false;
     }
 
-    public static String implode(String separator, String... data) {
+    public static String implode(String separator, String... data) { //... spread operator.
         StringBuilder sb = new StringBuilder();
 
         for(int i = 0; i < data.length - 1; ++i) {

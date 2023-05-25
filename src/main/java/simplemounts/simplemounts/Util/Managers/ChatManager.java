@@ -15,7 +15,7 @@ public class ChatManager {
 
     public ChatManager() {
         if(badWords != null) return;
-        
+
         badWords = new ArrayList<>();
 
         //Load bad words into a list, so we can later validate
