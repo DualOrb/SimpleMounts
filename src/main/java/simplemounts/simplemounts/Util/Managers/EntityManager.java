@@ -97,7 +97,7 @@ public abstract class EntityManager {
             }
 
             //Special values
-            horse.setPersistent(true);
+            horse.setPersistent(false);
             horse.setRemoveWhenFarAway(true);
             horse.setTamed(true);
             horse.setAdult();
