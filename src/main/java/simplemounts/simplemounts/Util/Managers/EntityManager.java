@@ -97,8 +97,7 @@ public abstract class EntityManager {
             }
 
             //Special values
-            horse.setPersistent(false);
-            horse.setRemoveWhenFarAway(true);
+            horse.setPersistent(true);
             horse.setTamed(true);
             horse.setAdult();
             horse.setOwner(player);
@@ -123,7 +122,7 @@ public abstract class EntityManager {
      * Removes a mount from the world that the player currently has summoned
      * @param player
      */
-    public static void storeSummonedMount(Player player) throws IOException {
+    public static void storeSummonedMount(Player player) {
         if(summonedMounts.isEmpty()) {SimpleMounts.sendUserError("No mounts to store!",player);return;}
         if(!summonedMounts.containsKey(player)) {SimpleMounts.sendUserError("No mounts to store!",player);return;}
 
@@ -222,5 +221,22 @@ public abstract class EntityManager {
             if(horse.getEntityId() == h1.getEntityId()) return player;
         }
         return null;
+    }
+
+    /**
+     * Returns all the currently summoned mounts
+     * @return
+     */
+    public static ArrayList<Entity> getAllMounts() {
+        ArrayList<Entity> entities = new ArrayList<>();
+
+        for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
+            Player player = entry.getKey();
+            ArrayList<Object> objects = entry.getValue();
+            AbstractHorse horse = (AbstractHorse)objects.get(0);
+
+            entities.add(horse);
+        }
+        return entities;
     }
 }

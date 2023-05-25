@@ -37,8 +37,7 @@ public class Release implements CommandExecutor {
         AbstractHorse h = (AbstractHorse)EntityManager.getSummonedMount(player);
 
         //Correcting to vanilla spawns
-        h.setPersistent(false);
-        h.setRemoveWhenFarAway(false);
+        h.setPersistent(true);
 
         EntityManager.removeMount(player);
 
