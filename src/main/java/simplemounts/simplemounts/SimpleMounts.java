@@ -21,15 +21,17 @@ import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public final class SimpleMounts extends JavaPlugin {
 
     private static Plugin plugin;   //This plugin
-    private static File pluginFolder; //Root file path
-    private static File mountsFolder; //file path for mounts
+    private static Path pluginFolder; //Root file path
+    private static Path mountsFolder; //file path for mounts
 
-    private static File customConfigFile;
-    private static FileConfiguration customConfig;
+    private static File mountConfigFile;
+    private static FileConfiguration mountConfig;
 
     private static ServiceLocator serviceLocator;
 
@@ -37,21 +39,28 @@ public final class SimpleMounts extends JavaPlugin {
     public void onEnable() {
         // Plugin startup logic
         plugin = this;
-        pluginFolder = getDataFolder();
-        mountsFolder = new File(pluginFolder + File.separator + "playerData");
-        createDataFolders();
+        pluginFolder = Path.of(getDataFolder().getPath());
+        try {
+            Files.createDirectories(Path.of(pluginFolder + "/" + "playerData"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        mountsFolder = Path.of(String.valueOf(pluginFolder),"playerData");
 
         //Load conf file
-        createCustomConfig();
+        createMountConfig();
 
         //Register services
         serviceLocator = ServiceLocator.getLocator();
         serviceLocator.registerService(ErrorManager.class, new ErrorManager());
         serviceLocator.registerService(ChatManager.class, new ChatManager());
-        serviceLocator.registerService(EntityManager.class, new EntityManager());
+
         serviceLocator.registerService(Database.class, new Database());
-        serviceLocator.registerService(GUIBuilder.class, new GUIBuilder());
+        serviceLocator.registerService(EntityManager.class, new EntityManager());
+
         serviceLocator.registerService(ItemManager.class, new ItemManager());
+        serviceLocator.registerService(GUIBuilder.class, new GUIBuilder());
+
 
         //Check Dependencies
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {Bukkit.getLogger().info("[Simple-Mounts] " + "Server is missing hard dependency: PlaceholderAPI");}
@@ -115,57 +124,45 @@ public final class SimpleMounts extends JavaPlugin {
     }
 
     //If config file is not there, create a config file
-    public void createCustomConfig() {
-        customConfigFile = new File(pluginFolder, "config.yml");
-        if(!customConfigFile.exists()) {
-            customConfigFile.getParentFile().mkdirs();
+    public void createMountConfig() {
+
+        mountConfigFile = new File(String.valueOf(pluginFolder), "config.yml");
+        if(!mountConfigFile.exists()) {
+            mountConfigFile.getParentFile().mkdirs();
             saveResource("config.yml",false);
         }
 
-        customConfig = new YamlConfiguration();
+        mountConfig = new YamlConfiguration();
         try {
-            customConfig.load(customConfigFile);
+            mountConfig.load(mountConfigFile);
         } catch(IOException | InvalidConfigurationException e) {
             e.printStackTrace();
         }
     }
 
     public static void reloadCustomConfig() {
-        customConfigFile = new File(pluginFolder, "config.yml");
-        customConfig = new YamlConfiguration();
+
+        mountConfigFile = new File(String.valueOf(pluginFolder), "config.yml");
+        mountConfig = new YamlConfiguration();
         try {
-            customConfig.load(customConfigFile);
+            mountConfig.load(mountConfigFile);
         } catch(IOException | InvalidConfigurationException e) {
             e.printStackTrace();
         }
     }
 
-    public static FileConfiguration getCustomConfig() {
-        return customConfig;
-    }
-
-
-    private void createDataFolders() {
-        if(!pluginFolder.exists()) {
-            pluginFolder.mkdir();
-        }
-        if(!mountsFolder.exists()) {
-            mountsFolder.mkdir();
-        }
+    public static FileConfiguration getMountConfig() {
+        return mountConfig;
     }
 
     public static Plugin getPlugin() {
         return plugin;
     }
 
-    public static File getMountsFolder() {
+    public static Path getMountsFolder() {
         return mountsFolder;
     }
 
-    public static File getPluginFolder() {return pluginFolder; }
-
-
-
-
+    public static Path getPluginFolder() {return pluginFolder; }
 
 }

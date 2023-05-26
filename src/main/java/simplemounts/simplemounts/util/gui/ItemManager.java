@@ -29,36 +29,6 @@ public class ItemManager {
         customItems = new Hashtable();              //Contains all custom items we create
         permItems = new ArrayList<ItemStack>();     //Items that can't be interacted with
         functionalItems = new Hashtable();          //For when we want to do a specific function based on an item usage
-
-        //Tome
-        ItemStack item = new ItemStack(Material.BOOK, 1);
-        ItemMeta item_meta = item.getItemMeta();
-        item_meta.setDisplayName(ChatColor.DARK_PURPLE + "Ancient Tome");
-        ArrayList<String> lore =  new ArrayList();
-        lore.add(ChatColor.GRAY + "Even the ancient ones fear");
-        lore.add(ChatColor.GRAY + "Fear the power within...");
-        item_meta.setLore(lore);
-        item_meta.addEnchant(FIRE_ASPECT, 5, true);
-        item_meta.addEnchant(KNOCKBACK, 5, true);
-        item_meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
-        item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(item_meta);
-        customItems.put("Ancient Tome", item);
-        permItems.add(item);
-
-
-        item = new ItemStack(Material.PURPLE_STAINED_GLASS_PANE, 1);
-        item_meta = item.getItemMeta();
-        item_meta.setDisplayName(ChatColor.DARK_PURPLE + "");
-        item_meta.addEnchant(FIRE_ASPECT, 5, true);
-        item_meta.addEnchant(KNOCKBACK, 5, true);
-        item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(item_meta);
-        customItems.put("Background", item);
-        permItems.add(item);
-
     }
 
     /**

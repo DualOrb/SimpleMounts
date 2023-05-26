@@ -19,14 +19,17 @@ import java.util.ArrayList;
 
 public class GUIHandler implements Listener {
 
+    private ItemManager itemManager;
+
     public GUIHandler(SimpleMounts plugin) {
         Bukkit.getPluginManager().registerEvents(this,plugin);
+        itemManager = ServiceLocator.getLocator().getService(ItemManager.class);
     }
 
     @EventHandler
     public void onPlayerDropItemEvent(PlayerDropItemEvent event) {
         //Perm items can't be dropped in survival
-        if(ItemManager.getPermItems().contains(event.getItemDrop().getItemStack())){
+        if(itemManager.getPermItems().contains(event.getItemDrop().getItemStack())){
             event.setCancelled(true);
             return;
         }
@@ -34,7 +37,7 @@ public class GUIHandler implements Listener {
 
     @EventHandler
     public void onPlayerInventoryClick(InventoryClickEvent event) {
-        if(ItemManager.getPermItems().contains(event.getCurrentItem())) event.setCancelled(true);
+        if(itemManager.getPermItems().contains(event.getCurrentItem())) event.setCancelled(true);
         if(event.getClickedInventory() == null) return; //Catch if player just presses esc to exit inventory
         if(event.getClickedInventory().getSize() != 9) return; //May need to be more specific in terms of which inventory
 

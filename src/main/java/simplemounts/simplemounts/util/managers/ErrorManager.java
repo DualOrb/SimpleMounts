@@ -22,13 +22,12 @@ public class ErrorManager {
 
     private final Path systemLogPath;
     private final String filename = "system.log";
-    private static final String prefix = ChatColor.DARK_GRAY + "[" + ChatColor.GOLD + "Simple" + ChatColor.GRAY + "Mounts" + ChatColor.DARK_GRAY + "]" + ChatColor.GRAY;
 
     /**
      * Initializes the log file if not there
      */
     public ErrorManager() {
-        Path path = Paths.get(SimpleMounts.getPluginFolder().getPath());
+        Path path = SimpleMounts.getPluginFolder();
 
         //Construct log file if not there
         Path.of(String.valueOf(path),filename);

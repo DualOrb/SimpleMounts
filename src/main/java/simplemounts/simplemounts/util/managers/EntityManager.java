@@ -106,7 +106,7 @@ public class EntityManager {
             horse.setTamed(true);
             horse.setAdult();
             horse.setOwner(player);
-            if(SimpleMounts.getCustomConfig().getBoolean("basic.is-immortal")) horse.setInvulnerable(true);
+            if(SimpleMounts.getMountConfig().getBoolean("basic.is-immortal")) horse.setInvulnerable(true);
 
             ArrayList<Object> o = new ArrayList<>();
             o.add(entity);

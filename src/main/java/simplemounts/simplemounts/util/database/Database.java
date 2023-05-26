@@ -35,7 +35,7 @@ public class Database {
 
         //Initial Connection
         try {
-            final String url = "jdbc:sqlite:" + SimpleMounts.getMountsFolder() + File.separator + "mounts.db";
+            final String url = "jdbc:sqlite:" + String.valueOf(SimpleMounts.getMountsFolder()) + File.separator + "mounts.db";
 
             conn = DriverManager.getConnection(url);
 

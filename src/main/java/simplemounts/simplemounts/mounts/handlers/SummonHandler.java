@@ -44,7 +44,7 @@ public class SummonHandler implements Listener {
         if(!(player.hasPermission("SimpleMounts.can-whistle"))) {errorManager.error("Sorry, you haven't learned how to whistle yet", player);return;}
 
         player.setCooldown(Material.GOAT_HORN, 100);
-        if(SimpleMounts.getCustomConfig().getBoolean("advanced.custom-sounds")) {
+        if(SimpleMounts.getMountConfig().getBoolean("advanced.custom-sounds")) {
             player.getWorld().playSound(player.getLocation(),"custom.whistle",1.0f,1.0f);
         } else {
             player.getWorld().playSound(player.getLocation(),Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
