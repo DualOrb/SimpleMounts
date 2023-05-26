@@ -52,7 +52,7 @@ public class ErrorManager {
         player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
         Bukkit.getLogger().info(sysMessage);
 
-        writeToLogFile(msg);
+        writeToLogFile(sysMessage);
     }
 
     /**
