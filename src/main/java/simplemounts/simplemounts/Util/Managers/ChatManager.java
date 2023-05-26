@@ -1,10 +1,9 @@
 package simplemounts.simplemounts.Util.Managers;
 
-import com.sun.tools.javac.Main;
+import org.bukkit.entity.Player;
 import simplemounts.simplemounts.SimpleMounts;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,10 +24,14 @@ public class ChatManager {
 
     }
 
-    public static boolean validateName(String name) {
+    public boolean validateName(String name) {
         for(String s: badWords) {
             if(name.toLowerCase().contains(s)) return false;
         }
         return true;
+    }
+
+    public void sendPlayerMessage(String msg, Player player) {
+
     }
 }

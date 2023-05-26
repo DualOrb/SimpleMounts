@@ -7,6 +7,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.File;
 import java.sql.*;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class Database {
 
     private static Connection conn = null;
+    private static ErrorManager errorManager;
 
     /**
      * Initialises the database files needed on startup
@@ -29,6 +32,7 @@ public class Database {
      * entity_id - If summoned, the summoned entity's id in the world
      */
     public static void init() {
+        errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
         //Initial Connection
         try {
@@ -36,7 +40,7 @@ public class Database {
 
             conn = DriverManager.getConnection(url);
 
-            SimpleMounts.sendSystemLog("Database Connection established");
+            errorManager.error("Database Connection established");
 
             //Setting up table
             String sql = "CREATE TABLE IF NOT EXISTS mounts (\n"
@@ -51,7 +55,7 @@ public class Database {
             Statement statement = conn.createStatement();
             statement.execute(sql);
         } catch (SQLException e) {
-            SimpleMounts.sendSystemLog("Unable to establish Database Connection: " + e);
+            errorManager.error("Unable to establish Database Connection: " + e);
             throw new RuntimeException(e);
         }
     }
@@ -153,7 +157,8 @@ public class Database {
                 try {
                     entities.add((JSONObject)new JSONParser().parse(rs.getString(1)));
                 } catch (ParseException e) {
-                    SimpleMounts.sendSystemLog("Failed to load x1 mount from DB: " + e);
+
+                    errorManager.error("Failed to load x1 mount from DB: ",player,e);
                     throw new RuntimeException(e);
                 }
             }

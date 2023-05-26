@@ -2,6 +2,7 @@ package simplemounts.simplemounts.Util.Managers;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
@@ -11,6 +12,7 @@ import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Database.Database;
 import simplemounts.simplemounts.Util.Database.Mount;
 import simplemounts.simplemounts.Util.Serialization.HorseSerialization;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -113,7 +115,8 @@ public abstract class EntityManager {
             return horse;
         } catch (Throwable e) {
             //despawn entity
-            SimpleMounts.sendSystemError("Failed to summon mount",player,e);
+            ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+            errorManager.error("Failed to summon mount",player,e);
             throw new RuntimeException(e);
         }
     }
@@ -138,6 +141,7 @@ public abstract class EntityManager {
         summonedMounts.remove(player);
 
         SimpleMounts.sendPlayerMessage("Stored Mount",player);
+        player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ARMOR,1.0f,1.0f);
 
     }
 

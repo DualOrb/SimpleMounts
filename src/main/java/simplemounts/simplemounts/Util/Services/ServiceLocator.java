@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Keeps a reference to all plugin services and dispatches them as needed
+ */
 public class ServiceLocator{
 
     private static ServiceLocator locator;

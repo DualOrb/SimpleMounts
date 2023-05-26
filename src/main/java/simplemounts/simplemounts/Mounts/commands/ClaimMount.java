@@ -10,6 +10,8 @@ import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Database.Mount;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -81,7 +83,8 @@ public class ClaimMount implements CommandExecutor {
 
         } catch (Throwable e) {
             //General Exception. Undo all actions
-            SimpleMounts.sendSystemError("Failed to write entity to file", player,e);
+            ErrorManager em = ServiceLocator.getLocator().getService(ErrorManager.class);
+            em.error("Failed to write entity to file", player,e);
 
         }
         return true;

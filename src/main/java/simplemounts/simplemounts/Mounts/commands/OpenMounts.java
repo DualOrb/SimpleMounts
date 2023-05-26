@@ -9,6 +9,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.Mounts.GUI.MountsPage;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import static org.bukkit.Bukkit.getPlayer;
 
@@ -38,7 +40,8 @@ public class OpenMounts implements CommandExecutor {
             }
 
         } catch (Throwable e) {
-            SimpleMounts.sendSystemError("Failed to Open Mount Menu",player,e);
+            ErrorManager em = ServiceLocator.getLocator().getService(ErrorManager.class);
+            em.error("Failed to Open Mount Menu", player,e);
             return false;
         }
     }

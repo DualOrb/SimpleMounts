@@ -2,6 +2,7 @@ package simplemounts.simplemounts;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
 import org.bukkit.Sound;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,10 +13,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 import simplemounts.simplemounts.Mounts.Handlers.*;
 import simplemounts.simplemounts.Mounts.Recipes.WhistleRecipe;
 import simplemounts.simplemounts.Mounts.commands.*;
+import simplemounts.simplemounts.Mounts.listeners.DistanceListener;
 import simplemounts.simplemounts.Util.Database.Database;
 import simplemounts.simplemounts.Util.GUI.InteractHandler;
 import simplemounts.simplemounts.Util.GUI.ItemManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +33,8 @@ public final class SimpleMounts extends JavaPlugin {
     private static File customConfigFile;
     private static FileConfiguration customConfig;
 
+    private static ServiceLocator serviceLocator;
+
     @Override
     public void onEnable() {
         // Plugin startup logic
@@ -40,6 +46,9 @@ public final class SimpleMounts extends JavaPlugin {
         //Load conf file
         createCustomConfig();
 
+        //Register services
+        serviceLocator = ServiceLocator.getLocator();
+        serviceLocator.registerService(ErrorManager.class, new ErrorManager());
 
         //Check Dependencies
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {Bukkit.getLogger().info("[Simple-Mounts] " + "Server is missing hard dependency: PlaceholderAPI");}
@@ -82,6 +91,10 @@ public final class SimpleMounts extends JavaPlugin {
         new RidingHandler(this);
         new SummonHandler(this);
         new EntityInteractHandler(this);
+        new TeleportHandler(this);
+
+        new DistanceListener(this);
+        //new ChunkDespawnHandler(this);
 
         //Register Commands
         this.getCommand("mounts").setExecutor(new OpenMounts());
@@ -150,6 +163,8 @@ public final class SimpleMounts extends JavaPlugin {
         return mountsFolder;
     }
 
+    public static File getPluginFolder() {return pluginFolder; }
+
     /**
      * Ensures there is a data folder on the server
      * if not, creates one
@@ -180,18 +195,6 @@ public final class SimpleMounts extends JavaPlugin {
     }
 
     /**
-     * Sends an error msg to the player and
-     * reports it to the main server
-     */
-    public static void sendSystemError(String msg, Player player, Throwable e) {
-        String sysMessage = prefix + " : " + ChatColor.RED + "CRITICAL: " + msg + "| ERROR-INFO: " + e + " | Triggered by " + player.getName();
-        player.sendMessage(sysMessage);
-        player.playSound(player, Sound.ENTITY_HORSE_DEATH,1.0f,1.0f);
-        player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
-        Bukkit.getLogger().info(sysMessage);
-    }
-
-    /**
      * Sends an error msg to the player
      *  - Simple errors, user side, such as using the plugin wrong
      */
@@ -199,10 +202,5 @@ public final class SimpleMounts extends JavaPlugin {
         String sysMessage = prefix + " : " + ChatColor.RED + msg;
         player.sendMessage(sysMessage);
         player.playSound(player, Sound.ENTITY_VILLAGER_NO,1.0f,1.0f);
-    }
-
-    public static void sendSystemLog(String msg) {
-        String sysMessage = prefix + " : " + msg;
-        Bukkit.getLogger().info(sysMessage);
     }
 }

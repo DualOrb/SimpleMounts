@@ -21,10 +21,6 @@ public class LogoutHandler implements Listener {
     public void onPlayerQuitEvent(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        try {
-            EntityManager.storeSummonedMount(player);
-        } catch (IOException e) {
-            SimpleMounts.sendSystemError("Unable to store mount on logout",player,e);
-        }
+        EntityManager.storeSummonedMount(player);
     }
 }
