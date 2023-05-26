@@ -9,6 +9,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityBreedEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 public class BreedHandler implements Listener {
 
@@ -30,9 +32,10 @@ public class BreedHandler implements Listener {
         Player motherOwner = (Player)mother.getOwner();
 
         //May need to get re worked
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         if(fatherOwner != null && motherOwner != null) {
             if(!SimpleMounts.getCustomConfig().getBoolean("basic.is-breedable")) {
-                SimpleMounts.sendUserError("Breeding of mounts is disabled",player);
+                errorManager.error("Breeding of mounts is disabled",player);
                 event.setCancelled(true);
                 return;
             }

@@ -40,8 +40,8 @@ public class OpenMounts implements CommandExecutor {
             }
 
         } catch (Throwable e) {
-            ErrorManager em = ServiceLocator.getLocator().getService(ErrorManager.class);
-            em.error("Failed to Open Mount Menu", player,e);
+            ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+            errorManager.error("Failed to Open Mount Menu", player,e);
             return false;
         }
     }

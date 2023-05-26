@@ -14,6 +14,7 @@ import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Database.Database;
 import simplemounts.simplemounts.Util.Database.Mount;
+import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
 import simplemounts.simplemounts.Util.Managers.ErrorManager;
 import simplemounts.simplemounts.Util.Services.ServiceLocator;
@@ -21,8 +22,6 @@ import simplemounts.simplemounts.Util.Services.ServiceLocator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-
-import static simplemounts.simplemounts.SimpleMounts.checkPlayerFolder;
 
 public class InteractHandler implements Listener {
 
@@ -50,14 +49,17 @@ public class InteractHandler implements Listener {
 
         //If its a horse egg, summon the horse and check if all others are unsummoned
 
-        ArrayList<Mount> mounts = Database.getMounts(player);
+        Database database = ServiceLocator.getLocator().getService(Database.class);
+        ArrayList<Mount> mounts = database.getMounts(player);
 
         if(clicked > mounts.size()-1) {event.setCancelled(true);return;} //Invalid place clicked. Prevents console spam
 
+        EntityManager em = ServiceLocator.getLocator().getService(EntityManager.class);
+
         //Logic for if a horse stored or summoned
-        if(EntityManager.isSummoned(player)) {
-            AbstractHorse h = (AbstractHorse)EntityManager.getSummonedMount(player);
-            EntityManager.storeSummonedMount(player);
+        if(em.isSummoned(player)) {
+            AbstractHorse h = (AbstractHorse)em.getSummonedMount(player);
+            em.storeSummonedMount(player);
             if(mounts.get(clicked).getEntityId() != null) {
                 if(mounts.get(clicked).getEntityId().equals(h.getEntityId())); {event.setCancelled(true);player.closeInventory();return;}
             }
@@ -65,19 +67,21 @@ public class InteractHandler implements Listener {
 
         //If shift click, release current mount. Should spawn it outside
         if(event.isRightClick() && event.isShiftClick()) {
-            AbstractHorse h = EntityManager.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
-            EntityManager.removeMount(player);
+            AbstractHorse h = em.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
+            em.removeMount(player);
             event.setCancelled(true);
             return;
         }
+        ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        EntityManager.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
+
+        em.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
 
         if(mounts.get(clicked).getHorseData().get("name") == null) {
-            SimpleMounts.sendPlayerMessage( "Summoned horse", (Player)event.getWhoClicked());
+            cm.sendPlayerMessage( "Summoned horse", (Player)event.getWhoClicked());
             player.playSound(player.getLocation(), Sound.ENTITY_HORSE_GALLOP,1.0f,1.0f);
         } else {
-            SimpleMounts.sendPlayerMessage( "Summoned " + mounts.get(clicked).getHorseData().get("name"), (Player)event.getWhoClicked());
+            cm.sendPlayerMessage( "Summoned " + mounts.get(clicked).getHorseData().get("name"), (Player)event.getWhoClicked());
 
         }
 

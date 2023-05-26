@@ -8,6 +8,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.IOException;
 
@@ -21,6 +22,7 @@ public class LogoutHandler implements Listener {
     public void onPlayerQuitEvent(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        EntityManager.storeSummonedMount(player);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+        entityManager.storeSummonedMount(player);
     }
 }

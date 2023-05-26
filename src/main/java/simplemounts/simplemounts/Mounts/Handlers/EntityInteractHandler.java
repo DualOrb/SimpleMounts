@@ -10,6 +10,8 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.spigotmc.event.entity.EntityMountEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 public class EntityInteractHandler implements Listener {
 
@@ -26,17 +28,21 @@ public class EntityInteractHandler implements Listener {
 
         AbstractHorse h1 = (AbstractHorse) event.getRightClicked();
 
-        Player owningPlayer = EntityManager.getOwningPlayer(h1);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+        Player owningPlayer = entityManager.getOwningPlayer(h1);
         if (owningPlayer == null) return; //If is not a currently summoned mount, then its wild and player can ride
 
-        AbstractHorse h2 = (AbstractHorse) EntityManager.getSummonedMount(player);
+        AbstractHorse h2 = (AbstractHorse) entityManager.getSummonedMount(player);
+
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         if (h2 == null) {
-            SimpleMounts.sendUserError("This is not your mount.", player);
+            errorManager.error("This is not your mount.", player);
             event.setCancelled(true);
             return;
         }
 
-        if(h1.getEntityId() != (h2.getEntityId())) {SimpleMounts.sendUserError("This is not your mount",player); event.setCancelled(true);return;}
+        if(h1.getEntityId() != (h2.getEntityId())) {errorManager.error("This is not your mount",player); event.setCancelled(true);return;}
 
 
         return;

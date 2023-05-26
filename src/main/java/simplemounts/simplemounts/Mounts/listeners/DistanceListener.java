@@ -9,6 +9,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import simplemounts.simplemounts.Mounts.GUI.MountsPage;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.util.ArrayList;
 
@@ -21,12 +22,13 @@ public class DistanceListener {
 
     public DistanceListener(Plugin plugin) {
         this.plugin = plugin;
+        EntityManager em = ServiceLocator.getLocator().getService(EntityManager.class);
 
         //Creates a timer task for every 5 seconds
         new BukkitRunnable() {
             public void run() {
                 //Get the current map / players / mounts
-                ArrayList<Entity> entities = EntityManager.getAllMounts();
+                ArrayList<Entity> entities = em.getAllMounts();
 
                 //All players in this list are known to be online
                 for(Entity e: entities) {
@@ -37,7 +39,7 @@ public class DistanceListener {
 
                     //if outside the range, then store the mount
                     if(distance > 15) {
-                        EntityManager.storeSummonedMount(player);
+                        em.storeSummonedMount(player);
                     }
                 }
             }

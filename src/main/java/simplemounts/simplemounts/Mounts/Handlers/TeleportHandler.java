@@ -10,6 +10,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 public class TeleportHandler implements Listener {
 
@@ -25,13 +26,15 @@ public class TeleportHandler implements Listener {
     public void onTeleport(PlayerTeleportEvent event) {
         Player player = event.getPlayer();
 
-        if(!EntityManager.isSummoned(player)) return;
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        double distance = calcDistance(player,EntityManager.getSummonedMount(player));
+        if(!entityManager.isSummoned(player)) return;
+
+        double distance = calcDistance(player,entityManager.getSummonedMount(player));
 
         if(distance < 15) return;
 
-        EntityManager.storeSummonedMount(player);
+        entityManager.storeSummonedMount(player);
     }
 
     /**

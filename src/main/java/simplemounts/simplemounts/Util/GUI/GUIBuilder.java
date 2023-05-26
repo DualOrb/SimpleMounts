@@ -9,10 +9,17 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.util.ArrayList;
 
-public abstract class GUIBuilder {
+public class GUIBuilder {
+
+    private ItemManager itemManager;
+
+    public GUIBuilder() {
+        itemManager = ServiceLocator.getLocator().getService(ItemManager.class);
+    }
 
     /**
      * Makes an Inventory GUI with spaces to add items to
@@ -24,7 +31,7 @@ public abstract class GUIBuilder {
      * @return Inventory
      * @throws Exception
      */
-    public static Inventory buildGUI(String name, ChatColor color, int spaces, Player owner, boolean spaceBetween) throws Exception {
+    public Inventory buildGUI(String name, ChatColor color, int spaces, Player owner, boolean spaceBetween) throws Exception {
         if (name == null || spaces == 0) {
             throw new Exception("Invalid Parameters");
         }
@@ -67,8 +74,8 @@ public abstract class GUIBuilder {
      * @param GUI
      * @return
      */
-    private static Inventory fillBetweenSpaces(Inventory GUI, boolean spaceBetween) {
-        ItemStack backgroundItem = ItemManager.getItemByName("Background");
+    private Inventory fillBetweenSpaces(Inventory GUI, boolean spaceBetween) {
+        ItemStack backgroundItem = itemManager.getItemByName("Background");
 
         int num;
         if (spaceBetween) {
@@ -90,9 +97,9 @@ public abstract class GUIBuilder {
     /**
      * Fills the spaces around a GUI that already has items placed inside
      */
-    public static Inventory fillWithBackgroundItem(Inventory GUI, Material material) {
+    public Inventory fillWithBackgroundItem(Inventory GUI, Material material) {
         //Getting the perm items list
-        ArrayList<ItemStack> permItems = ItemManager.getPermItems();
+        ArrayList<ItemStack> permItems = itemManager.getPermItems();
         int permItemsLength = permItems.size();
         //Setting up the background item with its own meta data
         ItemStack backgroundItem = new ItemStack(material);
@@ -101,7 +108,7 @@ public abstract class GUIBuilder {
         item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         backgroundItem.setItemMeta(item_meta);
-        ItemManager.addPermItem(backgroundItem);
+        itemManager.addPermItem(backgroundItem);
 
         //Air constant for the loop
         final ItemStack AIR = new ItemStack(Material.AIR);
@@ -122,7 +129,7 @@ public abstract class GUIBuilder {
      * newBackgroundItem
      * creates a background item that cannot be touched for the GUIs
      */
-    public static ItemStack newBackgroundItem(Material material) {
+    public ItemStack newBackgroundItem(Material material) {
         ItemStack item = new ItemStack(material, 1);
         ItemMeta item_meta = item.getItemMeta();
         item_meta.setDisplayName("");
@@ -130,7 +137,7 @@ public abstract class GUIBuilder {
         item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(item_meta);
-        ItemManager.addPermItem(item);
+        itemManager.addPermItem(item);
 
         return item;
     }
@@ -144,7 +151,7 @@ public abstract class GUIBuilder {
      * @param function
      * @param quantity
      */
-    public static ItemStack newFunctionalItem(Material material, String name, String function, int quantity) {
+    public ItemStack newFunctionalItem(Material material, String name, String function, int quantity) {
         if (quantity == 0) {
             quantity = 1;
         }
@@ -156,21 +163,21 @@ public abstract class GUIBuilder {
         item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(item_meta);
-        ItemManager.addPermItem(item);
-        ItemManager.addFunctionalItem(item, function);
+        itemManager.addPermItem(item);
+        itemManager.addFunctionalItem(item, function);
 
         return item;
     }
 
-    public static ItemStack newFunctionalItem(ItemStack item, String name, String function) {
+    public ItemStack newFunctionalItem(ItemStack item, String name, String function) {
 
         ItemMeta item_meta = item.getItemMeta();
         item_meta.setDisplayName(name);
         item_meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item_meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(item_meta);
-        ItemManager.addPermItem(item);
-        ItemManager.addFunctionalItem(item, function);
+        itemManager.addPermItem(item);
+        itemManager.addFunctionalItem(item, function);
 
         return item;
     }

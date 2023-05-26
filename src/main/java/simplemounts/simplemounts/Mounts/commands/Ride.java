@@ -9,7 +9,10 @@ import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.Mounts.GUI.MountsPage;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 public class Ride implements CommandExecutor {
 
@@ -30,18 +33,22 @@ public class Ride implements CommandExecutor {
 
         Player player = (Player) sender;
 
-        Entity e = EntityManager.getSummonedMount(player);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+        Entity entity = entityManager.getSummonedMount(player);
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
-        if(e == null) {SimpleMounts.sendUserError("Must have a mount summoned", player); return true;}
+        if(entity == null) {errorManager.error("Must have a mount summoned", player); return true;}
 
-        e.teleport(player.getLocation());
+        ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        SimpleMounts.sendPlayerMessage("Yeehawwwwww",player);
+        entity.teleport(player.getLocation());
+
+        cm.sendPlayerMessage("Yeehawwwwww",player);
 
         Bukkit.getScheduler().runTaskLater(SimpleMounts.getPlugin(), new Runnable() {
             @Override
             public void run() {
-                e.addPassenger(player);
+                entity.addPassenger(player);
             }
         },3L);
 

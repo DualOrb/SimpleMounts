@@ -23,12 +23,16 @@ import java.util.UUID;
 /**
  * A class for managing rideable entities
  */
-public abstract class EntityManager {
+public class EntityManager {
 
     private static HashMap<Player, ArrayList<Object>> summonedMounts;   //ArrayList is defined as HorseEntity,index
+    private static ErrorManager errorManager;
+    private static Database database;
 
-    public static void init() {
+    public EntityManager() {
         summonedMounts = new HashMap<>();
+        errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        database = ServiceLocator.getLocator().getService(Database.class);
     }
 
     /**
@@ -36,10 +40,10 @@ public abstract class EntityManager {
      * @param entity
      * @param player
      */
-    public static JSONObject createEntitySave(Entity entity, Player player) throws IOException {
+    public JSONObject createEntitySave(Entity entity, Player player) throws IOException {
         JSONObject obj = HorseSerialization.serializeHorse((AbstractHorse)entity);
 
-        UUID id = Database.insertNewMount(player,obj);
+        UUID id = database.insertNewMount(player,obj);
 
         return obj;
     }
@@ -49,8 +53,8 @@ public abstract class EntityManager {
      * @param player
      * @return
      */
-    public static ArrayList<JSONObject> getEntities(Player player) throws IOException, ClassNotFoundException {
-        ArrayList<JSONObject> entities = Database.getEntities(player);
+    public ArrayList<JSONObject> getEntities(Player player) throws IOException, ClassNotFoundException {
+        ArrayList<JSONObject> entities = database.getEntities(player);
 
         return entities;
     }
@@ -60,7 +64,7 @@ public abstract class EntityManager {
      *
      * @return
      */
-    public static AbstractHorse spawnHorse(Mount m, Player player) {
+    public AbstractHorse spawnHorse(Mount m, Player player) {
         //Generic Entity Data
         JSONObject json = m.getHorseData();
 
@@ -110,7 +114,7 @@ public abstract class EntityManager {
             o.add(m.getMountId());
             summonedMounts.put(player,o);
 
-            EntityManager.updateSummonTag(player,horse,true);
+            updateSummonTag(player,horse,true);
 
             return horse;
         } catch (Throwable e) {
@@ -125,14 +129,14 @@ public abstract class EntityManager {
      * Removes a mount from the world that the player currently has summoned
      * @param player
      */
-    public static void storeSummonedMount(Player player) {
-        if(summonedMounts.isEmpty()) {SimpleMounts.sendUserError("No mounts to store!",player);return;}
-        if(!summonedMounts.containsKey(player)) {SimpleMounts.sendUserError("No mounts to store!",player);return;}
+    public void storeSummonedMount(Player player) {
+        if(summonedMounts.isEmpty()) {errorManager.error("No mounts to store!",player);return;}
+        if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
 
         AbstractHorse e = (AbstractHorse)summonedMounts.get(player).get(0);
         UUID uuid = UUID.fromString(summonedMounts.get(player).get(1).toString());
-        EntityManager.updateSummonTag(player,e,false);
-        Database.updateMount(player,uuid,"horse_data",HorseSerialization.serializeHorse(e));
+        updateSummonTag(player,e,false);
+        database.updateMount(player,uuid,"horse_data",HorseSerialization.serializeHorse(e));
 
         //If on lead, drop lead
         if(e.isLeashed()) player.getWorld().dropItem(e.getLocation(),new ItemStack(Material.LEAD,1));
@@ -140,7 +144,9 @@ public abstract class EntityManager {
         e.remove();
         summonedMounts.remove(player);
 
-        SimpleMounts.sendPlayerMessage("Stored Mount",player);
+        ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
+
+        cm.sendPlayerMessage("Stored Mount",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ARMOR,1.0f,1.0f);
 
     }
@@ -148,13 +154,13 @@ public abstract class EntityManager {
     /**
      * Updates the summoned tag inside the JSON file for the horse
      */
-    public static void updateSummonTag(Player player, AbstractHorse horse, boolean b) {
+    public void updateSummonTag(Player player, AbstractHorse horse, boolean b) {
         if(b) { //True, adds entity to file
-            Database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",1);
-            Database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",horse.getUniqueId());
+            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",1);
+            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",horse.getUniqueId());
         } else {    //Removes tag from database
-            Database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",0);
-            Database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",null);
+            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",0);
+            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",null);
         }
 
     }
@@ -163,13 +169,13 @@ public abstract class EntityManager {
      * Returns a boolean value for if the entity is summoned or not
      * @param player
      */
-    public static boolean isSummoned(Player player) {
+    public boolean isSummoned(Player player) {
         if(!summonedMounts.containsKey(player)) return false;
         if(summonedMounts.get(player).isEmpty()) return false;
         return true;
     }
 
-    public static Entity getSummonedMount(Player player) {
+    public Entity getSummonedMount(Player player) {
         if(summonedMounts.get(player) == null) return null;
         return (Entity)summonedMounts.get(player).get(0);
     }
@@ -178,19 +184,19 @@ public abstract class EntityManager {
      * Removes the mount file from our systems. Does not remove mount from world
      * @param player
      */
-    public static void removeMount(Player player) {
+    public void removeMount(Player player) {
         AbstractHorse h = (AbstractHorse)summonedMounts.get(player).get(0);
         UUID uuid = UUID.fromString(summonedMounts.get(player).get(1).toString());
 
         summonedMounts.remove(player);
 
-        Database.removeMount(player,uuid);
+        database.removeMount(player,uuid);
     }
 
     /**
      * Despawns all the currenly summoned mounts on the server
      */
-    public static void despawnAllMounts() {
+    public void despawnAllMounts() {
 
         for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
@@ -206,8 +212,8 @@ public abstract class EntityManager {
      * @param player
      * @return
      */
-    public static ArrayList<Mount> getMounts(Player player) {
-        return Database.getMounts(player);
+    public ArrayList<Mount> getMounts(Player player) {
+        return database.getMounts(player);
     }
 
     /**
@@ -216,7 +222,7 @@ public abstract class EntityManager {
      * @param h1
      * @return
      */
-    public static Player getOwningPlayer(AbstractHorse h1) {
+    public Player getOwningPlayer(AbstractHorse h1) {
         for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
             ArrayList<Object> objects = entry.getValue();
@@ -231,7 +237,7 @@ public abstract class EntityManager {
      * Returns all the currently summoned mounts
      * @return
      */
-    public static ArrayList<Entity> getAllMounts() {
+    public ArrayList<Entity> getAllMounts() {
         ArrayList<Entity> entities = new ArrayList<>();
 
         for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {

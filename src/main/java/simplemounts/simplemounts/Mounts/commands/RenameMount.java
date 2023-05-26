@@ -12,6 +12,8 @@ import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.Util.Database.Mount;
 import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.util.ArrayList;
 
@@ -30,18 +32,21 @@ public class RenameMount implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if(!(sender instanceof Player)) return false;
         if(!(sender.hasPermission("SimpleMounts.rename"))) return false;
-        if(args.length != 1) {SimpleMounts.sendUserError("Must provide a name",(Player)sender); return true;}
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        if(args.length != 1) {errorManager.error("Must provide a name",(Player)sender); return true;}
 
         Player player = (Player)sender;
 
-        Entity e = EntityManager.getSummonedMount(player);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        if(e == null) {SimpleMounts.sendUserError("Must first summon a mount",player);return true;}
+        Entity e = entityManager.getSummonedMount(player);
+
+        if(e == null) {errorManager.error("Must first summon a mount",player);return true;}
 
         //Check for nametag in hand
-        if(!player.getInventory().getItemInMainHand().getType().equals(Material.NAME_TAG)) {SimpleMounts.sendUserError("Must be holding a name tag!",player); return true;}
+        if(!player.getInventory().getItemInMainHand().getType().equals(Material.NAME_TAG)) {errorManager.error("Must be holding a name tag!",player); return true;}
 
-        ArrayList<Mount> mounts = EntityManager.getMounts(player);
+        ArrayList<Mount> mounts = entityManager.getMounts(player);
 
         String name = "";
         if(args != null) {
@@ -50,9 +55,10 @@ public class RenameMount implements CommandExecutor {
             name = name.replace("_", " ");
         }
 
-        if(name.length() > 25) {SimpleMounts.sendUserError("Name is too long",player);return true;}
-        ChatManager cm = new ChatManager();
-        if(!cm.validateName(name)) {SimpleMounts.sendUserError("Profanity Detected. Try again",player);return true;}
+        //Validate Name chosen
+        if(name.length() > 25) {errorManager.error("Name is too long",player);return true;}
+        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
+        if(!chatManager.validateName(name)) {errorManager.error("Profanity Detected. Try again",player);return true;}
 
         for(Mount m: mounts) {
             if(m.isSummoned()) {
@@ -60,7 +66,7 @@ public class RenameMount implements CommandExecutor {
                 e.setCustomNameVisible(true);
                 player.getInventory().removeItem(new ItemStack(Material.NAME_TAG,1));   //remove x1 nametage
                 player.playSound(player, Sound.ITEM_BOOK_PAGE_TURN,2.5f,2.5f);
-                SimpleMounts.sendPlayerMessage("Successfully Renamed Mount",player);
+                chatManager.sendPlayerMessage("Successfully Renamed Mount",player);
                 return true;
             }
         }

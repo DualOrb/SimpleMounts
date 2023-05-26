@@ -7,7 +7,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.IOException;
 
@@ -30,18 +33,22 @@ public class Release implements CommandExecutor {
 
         Player player = (Player) sender;
 
-        if(!EntityManager.isSummoned(player)) {
-            SimpleMounts.sendUserError("Must first have a summoned mount", player);
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+        if(!entityManager.isSummoned(player)) {
+            errorManager.error("Must first have a summoned mount", player);
             return true;
         }
-        AbstractHorse h = (AbstractHorse)EntityManager.getSummonedMount(player);
+        AbstractHorse h = (AbstractHorse)entityManager.getSummonedMount(player);
 
         //Correcting to vanilla spawns
         h.setPersistent(true);
 
-        EntityManager.removeMount(player);
+        entityManager.removeMount(player);
 
-        SimpleMounts.sendPlayerMessage("Goodbye my friend...",player);
+        chatManager.sendPlayerMessage("Goodbye my friend...",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
 
         return true;

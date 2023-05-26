@@ -17,6 +17,7 @@ import simplemounts.simplemounts.Util.Database.Mount;
 import simplemounts.simplemounts.Util.GUI.GUIBuilder;
 import simplemounts.simplemounts.Util.GUI.ItemManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -26,6 +27,8 @@ import java.util.UUID;
 public class MountsPage {
     public MountsPage(Player target, Player sender) {
         //Create a GUI loading all info for their current mounts
+        Database database = ServiceLocator.getLocator().getService(Database.class);
+        ItemManager itemManager = ServiceLocator.getLocator().getService(ItemManager.class);
         Inventory GUI = Bukkit.createInventory(null, 9, ChatColor.GOLD + "" + ChatColor.BOLD + "Mounts");
 
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
@@ -34,11 +37,11 @@ public class MountsPage {
         skullmeta.setOwningPlayer(target);
         head.setItemMeta(skullmeta);
         GUI.setItem(8,head);
-        ItemManager.addPermItem(head);
+        itemManager.addPermItem(head);
 
 
         //Grab the entities associated with the player
-        ArrayList<Mount> mounts = Database.getMounts(target);
+        ArrayList<Mount> mounts = database.getMounts(target);
 
         ArrayList<JSONObject> jsonObs = new ArrayList<>();
 
@@ -48,6 +51,8 @@ public class MountsPage {
 
         //Populate the GUI
         int counter = 0;
+        GUIBuilder guiBuilder = ServiceLocator.getLocator().getService(GUIBuilder.class);
+
         for(JSONObject e: jsonObs) {
 
             ItemStack spawnEgg = null;
@@ -121,7 +126,7 @@ public class MountsPage {
             GUI.setItem(counter,spawnEgg);
             counter++;
         }
-        GUI = GUIBuilder.fillWithBackgroundItem(GUI, Material.BLACK_STAINED_GLASS_PANE);
+        GUI = guiBuilder.fillWithBackgroundItem(GUI, Material.BLACK_STAINED_GLASS_PANE);
 
         sender.openInventory(GUI);
     }

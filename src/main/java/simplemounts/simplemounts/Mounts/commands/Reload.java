@@ -5,6 +5,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.ErrorManager;
 import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
@@ -19,10 +20,11 @@ public class Reload implements CommandExecutor {
         SimpleMounts.reloadCustomConfig();
         String s = "Reloaded Simple Mounts Config";
 
-        ErrorManager em = ServiceLocator.getLocator().getService(ErrorManager.class);
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        if(!(sender instanceof Player)) {em.error(s);return true;}
-        SimpleMounts.sendPlayerMessage(s,(Player)sender);
+        if(!(sender instanceof Player)) {errorManager.error(s);return true;}
+        chatManager.sendPlayerMessage(s,(Player)sender);
         return true;
 
     }

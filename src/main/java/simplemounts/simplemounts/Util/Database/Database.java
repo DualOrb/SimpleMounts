@@ -31,7 +31,7 @@ public class Database {
      * isSummoned - if the mount is currently in the overworld
      * entity_id - If summoned, the summoned entity's id in the world
      */
-    public static void init() {
+    public Database() {
         errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
         //Initial Connection
@@ -49,7 +49,7 @@ public class Database {
                     + "isSummoned integer NOT NULL,\n"
                     + "entity_id varchar(255),\n"   //May be null
                     + "horse_data text NOT NULL,\n"
-                    + "trusted_players text ,\n"
+                    + "trusted_players text ,\n"    //JSON ARRAY
                     + "CONSTRAINT Pk_Mount PRIMARY KEY (player_id,mount_id)"
                     + ");";
             Statement statement = conn.createStatement();
@@ -66,7 +66,7 @@ public class Database {
      * @param horse
      * @return
      */
-    public static UUID insertNewMount(Player player, JSONObject horse) {
+    public UUID insertNewMount(Player player, JSONObject horse) {
         UUID uuid = UUID.randomUUID();
         String sql = "INSERT INTO mounts(player_id,mount_id,isSummoned,horse_data) VALUES(?,?,?,?)";
 
@@ -91,7 +91,7 @@ public class Database {
      * @param field
      * @param obj
      */
-    public static void updateMount(Player player, UUID mountId, String field, Object obj) {
+    public void updateMount(Player player, UUID mountId, String field, Object obj) {
 
         String sql = "UPDATE mounts SET " + field + " = ? "
                 + "WHERE mount_id = ?";
@@ -115,7 +115,7 @@ public class Database {
         }
     }
 
-    public static boolean isSummoned(Player player, UUID mountId) {
+    public boolean isSummoned(Player player, UUID mountId) {
         String sql = "SELECT isSummoned FROM mounts WHERE player_id = ? && mount_id = ?";
 
         try {
@@ -142,7 +142,7 @@ public class Database {
      * @param player
      * @return
      */
-    public static ArrayList<JSONObject> getEntities(Player player) {
+    public ArrayList<JSONObject> getEntities(Player player) {
         ArrayList<JSONObject> entities = new ArrayList<>();
 
         String sql = "SELECT horse_data FROM mounts WHERE player_id = ?";
@@ -169,7 +169,7 @@ public class Database {
         return entities;
     }
 
-    public static ArrayList<Mount> getMounts(Player player) {
+    public ArrayList<Mount> getMounts(Player player) {
         ArrayList<Mount> mounts = new ArrayList<>();
 
         String sql = "SELECT * FROM mounts WHERE player_id = ?";
@@ -202,7 +202,7 @@ public class Database {
      * @param player
      * @param uuid
      */
-    public static void removeMount(Player player, UUID uuid) {
+    public void removeMount(Player player, UUID uuid) {
         String sql = "DELETE FROM mounts WHERE player_id = ? AND mount_id = ?";
 
         try {
@@ -221,7 +221,7 @@ public class Database {
      * @param mountId
      * @param trusted
      */
-    public static void addTrustedPlayer(UUID mountId, Player trusted) {
+    public void addTrustedPlayer(UUID mountId, Player trusted) {
         String sql = "SELECT trusted_players FROM mounts WHERE mount_id = ?";
 
         ResultSet rs;

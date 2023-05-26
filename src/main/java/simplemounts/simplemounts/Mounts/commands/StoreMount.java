@@ -28,8 +28,8 @@ public class StoreMount implements CommandExecutor {
         if(!(sender.hasPermission("SimpleMounts.ClaimMounts"))) {return false;}
 
         Player player = (Player) sender;
-
-        EntityManager.storeSummonedMount(player);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+        entityManager.storeSummonedMount(player);
 
         return true;
     }

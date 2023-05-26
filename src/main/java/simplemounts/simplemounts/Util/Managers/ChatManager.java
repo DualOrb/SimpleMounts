@@ -1,5 +1,6 @@
 package simplemounts.simplemounts.Util.Managers;
 
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.SimpleMounts;
 
@@ -11,6 +12,8 @@ import java.util.stream.Collectors;
 public class ChatManager {
 
     private static List<String> badWords = null;
+
+    private static final String prefix = ChatColor.DARK_GRAY + "[" + ChatColor.GOLD + "Simple" + ChatColor.GRAY + "Mounts" + ChatColor.DARK_GRAY + "]" + ChatColor.GRAY;
 
     public ChatManager() {
         if(badWords != null) return;
@@ -31,7 +34,12 @@ public class ChatManager {
         return true;
     }
 
-    public void sendPlayerMessage(String msg, Player player) {
-
+    /**
+     * Sends the targetted player a system msg
+     * @param msg
+     * @param player
+     */
+    public static void sendPlayerMessage(String msg, Player player) {
+        player.sendMessage(prefix + " : " + msg);
     }
 }

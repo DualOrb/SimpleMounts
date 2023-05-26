@@ -18,6 +18,8 @@ import org.bukkit.scheduler.BukkitScheduler;
 import simplemounts.simplemounts.Mounts.GUI.MountsPage;
 import simplemounts.simplemounts.Mounts.Recipes.WhistleRecipe;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.Util.Managers.ErrorManager;
+import simplemounts.simplemounts.Util.Services.ServiceLocator;
 
 import java.util.List;
 
@@ -44,7 +46,9 @@ public class SummonHandler implements Listener {
 
         if(player.hasCooldown(Material.GOAT_HORN)) return;
 
-        if(!(player.hasPermission("SimpleMounts.can-whistle"))) {SimpleMounts.sendUserError("Sorry, you haven't learned how to whistle yet", player);return;}
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+
+        if(!(player.hasPermission("SimpleMounts.can-whistle"))) {errorManager.error("Sorry, you haven't learned how to whistle yet", player);return;}
 
         player.setCooldown(Material.GOAT_HORN, 100);
         if(SimpleMounts.getCustomConfig().getBoolean("advanced.custom-sounds")) {

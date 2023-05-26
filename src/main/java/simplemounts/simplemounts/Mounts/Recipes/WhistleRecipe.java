@@ -18,17 +18,16 @@ public class WhistleRecipe {
     public WhistleRecipe() {
         whistle = new ItemStack(Material.GOAT_HORN,1);
         ItemMeta meta = whistle.getItemMeta();
-        MusicInstrumentMeta musicMeta = (MusicInstrumentMeta)meta;
-        musicMeta.setCustomModelData(1);
-        musicMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        musicMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        musicMeta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
-        musicMeta.addItemFlags(ItemFlag.HIDE_DESTROYS);
-        musicMeta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
-        musicMeta.addItemFlags(ItemFlag.HIDE_DYE);
-        musicMeta.addItemFlags(ItemFlag.HIDE_PLACED_ON);
+        meta.setCustomModelData(1);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        meta.addItemFlags(ItemFlag.HIDE_DESTROYS);
+        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        meta.addItemFlags(ItemFlag.HIDE_DYE);
+        meta.addItemFlags(ItemFlag.HIDE_PLACED_ON);
 
-        whistle.setItemMeta(musicMeta);
+        whistle.setItemMeta(meta);
 
         ItemMeta itemMeta = whistle.getItemMeta();
         itemMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.GRAY + "Horse Whistle");

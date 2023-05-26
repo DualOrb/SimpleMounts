@@ -1,13 +1,9 @@
 package simplemounts.simplemounts;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.Sound;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import simplemounts.simplemounts.Mounts.Handlers.*;
@@ -15,8 +11,10 @@ import simplemounts.simplemounts.Mounts.Recipes.WhistleRecipe;
 import simplemounts.simplemounts.Mounts.commands.*;
 import simplemounts.simplemounts.Mounts.listeners.DistanceListener;
 import simplemounts.simplemounts.Util.Database.Database;
+import simplemounts.simplemounts.Util.GUI.GUIBuilder;
 import simplemounts.simplemounts.Util.GUI.InteractHandler;
 import simplemounts.simplemounts.Util.GUI.ItemManager;
+import simplemounts.simplemounts.Util.Managers.ChatManager;
 import simplemounts.simplemounts.Util.Managers.EntityManager;
 import simplemounts.simplemounts.Util.Managers.ErrorManager;
 import simplemounts.simplemounts.Util.Services.ServiceLocator;
@@ -49,6 +47,11 @@ public final class SimpleMounts extends JavaPlugin {
         //Register services
         serviceLocator = ServiceLocator.getLocator();
         serviceLocator.registerService(ErrorManager.class, new ErrorManager());
+        serviceLocator.registerService(ChatManager.class, new ChatManager());
+        serviceLocator.registerService(EntityManager.class, new EntityManager());
+        serviceLocator.registerService(Database.class, new Database());
+        serviceLocator.registerService(GUIBuilder.class, new GUIBuilder());
+        serviceLocator.registerService(ItemManager.class, new ItemManager());
 
         //Check Dependencies
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {Bukkit.getLogger().info("[Simple-Mounts] " + "Server is missing hard dependency: PlaceholderAPI");}
@@ -66,17 +69,13 @@ public final class SimpleMounts extends JavaPlugin {
     public void onDisable() {
         // Plugin shutdown logic
         Bukkit.getLogger().info("[Simple-Mounts] " + "Shutting Down");
-        EntityManager.despawnAllMounts();
+        EntityManager em = ServiceLocator.getLocator().getService(EntityManager.class);
+        em.despawnAllMounts();
         Bukkit.getLogger().info("[Simple-Mounts] " + "All Mounts Stored");
     }
 
     private void setup() {
 
-        EntityManager.init();
-        Database.init();
-        log("Database Initialised");
-
-        ItemManager.setup();    //Initialises all our custom items for the plugin
         new WhistleRecipe();
 
         log("Items and Recipes Loaded");
@@ -165,42 +164,8 @@ public final class SimpleMounts extends JavaPlugin {
 
     public static File getPluginFolder() {return pluginFolder; }
 
-    /**
-     * Ensures there is a data folder on the server
-     * if not, creates one
-     */
-    public static File checkPlayerFolder(Player player) {
-        String folderName = player.getUniqueId().toString();
 
-        File playerFolder = new File(SimpleMounts.getMountsFolder() + File.separator + folderName);
 
-        if(!playerFolder.exists()) {
-            playerFolder.mkdir();
-        }
-        return playerFolder;
-    }
 
-    /////////////////////////////
-    //Server Utils
-    ////////////////////////////
-    private static String prefix = ChatColor.DARK_GRAY + "[" + ChatColor.GOLD + "Simple" + ChatColor.GRAY + "Mounts" + ChatColor.DARK_GRAY + "]" + ChatColor.GRAY;
 
-    /**
-     * Sends the targetted player a system msg
-     * @param msg
-     * @param player
-     */
-    public static void sendPlayerMessage(String msg, Player player) {
-        player.sendMessage(prefix + " : " + msg);
-    }
-
-    /**
-     * Sends an error msg to the player
-     *  - Simple errors, user side, such as using the plugin wrong
-     */
-    public static void sendUserError(String msg, Player player) {
-        String sysMessage = prefix + " : " + ChatColor.RED + msg;
-        player.sendMessage(sysMessage);
-        player.playSound(player, Sound.ENTITY_VILLAGER_NO,1.0f,1.0f);
-    }
 }

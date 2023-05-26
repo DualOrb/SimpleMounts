@@ -17,7 +17,7 @@ import static org.bukkit.enchantments.Enchantment.*;
  * ItemManager
  * Is
  */
-public abstract class ItemManager {
+public class ItemManager {
 
     private static Map customItems;
     private static ArrayList<ItemStack> permItems;
@@ -25,7 +25,7 @@ public abstract class ItemManager {
 
 
     //Called to initialise all the static custom items we define here
-    public static void setup() {
+    public ItemManager() {
         customItems = new Hashtable();              //Contains all custom items we create
         permItems = new ArrayList<ItemStack>();     //Items that can't be interacted with
         functionalItems = new Hashtable();          //For when we want to do a specific function based on an item usage
@@ -68,14 +68,14 @@ public abstract class ItemManager {
      * @param itemName
      * @return ItemStack
      */
-    public static ItemStack getItemByName(String itemName) {
+    public ItemStack getItemByName(String itemName) {
         if(!(customItems.containsKey(itemName))) { return null;}
         return (ItemStack)customItems.get(itemName);
     }
 
-    public static Map getFunctionalItems() {return functionalItems;}
+    public Map getFunctionalItems() {return functionalItems;}
 
-    public static ArrayList getPermItems() {
+    public ArrayList getPermItems() {
         return permItems;
     }
 
@@ -84,7 +84,7 @@ public abstract class ItemManager {
      * Adds an item to be stored in the list of permanent, non moveable items on the server
      * @param item
      */
-    public static void addPermItem(ItemStack item) {
+    public void addPermItem(ItemStack item) {
         if(!(permItems.contains(item))) {permItems.add(item);}   //Only adds if item is not already in list
         return;
 
@@ -94,7 +94,7 @@ public abstract class ItemManager {
      * addFunctionalItem
      * adds an item to be stored in the hashtable, has a code we can check for which function
      */
-    public static void addFunctionalItem(ItemStack item, String code) {
+    public void addFunctionalItem(ItemStack item, String code) {
         functionalItems.put(item, code);
     }
 
@@ -102,7 +102,7 @@ public abstract class ItemManager {
      * isFunctionalItem
      * Checks if the functional item is in the list. If it is, returns a code. If not, returns null
      */
-    public static String isFunctionalItem(ItemStack item) {
+    public String isFunctionalItem(ItemStack item) {
         if(!(functionalItems.containsKey(item))) {return null; }
         return functionalItems.get(item).toString();
     }
@@ -114,7 +114,7 @@ public abstract class ItemManager {
      * @param ItemName
      * @return bool true if exists | false if not
      */
-    public static boolean exists(String ItemName) {
+    public boolean exists(String ItemName) {
         return customItems.containsKey(ItemName);
     }
 
