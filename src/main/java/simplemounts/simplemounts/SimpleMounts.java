@@ -12,7 +12,7 @@ import simplemounts.simplemounts.mounts.commands.*;
 import simplemounts.simplemounts.mounts.listeners.DistanceListener;
 import simplemounts.simplemounts.util.database.Database;
 import simplemounts.simplemounts.util.gui.GUIBuilder;
-import simplemounts.simplemounts.util.gui.InteractHandler;
+import simplemounts.simplemounts.util.gui.GUIHandler;
 import simplemounts.simplemounts.util.gui.ItemManager;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
@@ -81,7 +81,7 @@ public final class SimpleMounts extends JavaPlugin {
         log("Items and Recipes Loaded");
 
         //Load Handlers
-        new InteractHandler(this);    //All player events
+        new GUIHandler(this);    //All player events
 
         log("Handlers Loaded");
         new DeathHandler(this);

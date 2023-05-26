@@ -11,7 +11,6 @@ import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Database;
 import simplemounts.simplemounts.util.database.Mount;
-import simplemounts.simplemounts.util.serialization.HorseSerialization;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.io.*;
@@ -41,7 +40,7 @@ public class EntityManager {
      * @param player
      */
     public JSONObject createEntitySave(Entity entity, Player player) throws IOException {
-        JSONObject obj = HorseSerialization.serializeHorse((AbstractHorse)entity);
+        JSONObject obj = serializeHorse((AbstractHorse)entity);
 
         UUID id = database.insertNewMount(player,obj);
 
@@ -136,7 +135,7 @@ public class EntityManager {
         AbstractHorse e = (AbstractHorse)summonedMounts.get(player).get(0);
         UUID uuid = UUID.fromString(summonedMounts.get(player).get(1).toString());
         updateSummonTag(player,e,false);
-        database.updateMount(player,uuid,"horse_data",HorseSerialization.serializeHorse(e));
+        database.updateMount(player,uuid,"horse_data",serializeHorse(e));
 
         //If on lead, drop lead
         if(e.isLeashed()) player.getWorld().dropItem(e.getLocation(),new ItemStack(Material.LEAD,1));
@@ -248,5 +247,44 @@ public class EntityManager {
             entities.add(horse);
         }
         return entities;
+    }
+
+    ////////////////////////////////////////////////////
+    //Serialization of Entities
+    ///////////////////////////////////////////////////
+    /**
+     * Serialize a Horse into a JSONObject.
+     * @param horse The Horse to serialize
+     * @return The serialized Horse
+     */
+    public JSONObject serializeHorse(AbstractHorse horse) {
+        JSONObject root = new JSONObject();
+
+        root.put("age", horse.getAge());
+        root.put("name",horse.getCustomName());
+        root.put("health", horse.getHealth());
+        if(horse.getCustomName() != null) root.put("name", horse.getCustomName());
+        root.put("type", horse.getType().toString());
+
+        if(horse instanceof Horse) {
+            Horse h = (Horse) horse;
+            root.put("color", h.getColor().name().toString());
+            if(h.getInventory().getArmor() != null) root.put("armor", h.getInventory().getArmor().getType().toString());
+            root.put("style", h.getStyle().toString());
+        }
+
+        if(horse.getInventory().getSaddle() != null) root.put("saddle", horse.getInventory().getSaddle().getType().toString());
+
+
+        root.put("summoned", false);
+
+        //NMS attributes - maybe not if this works?
+
+        root.put("speed", horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getBaseValue());
+        root.put("jump", horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getBaseValue());
+        root.put("max-health", horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
+
+        return root;
+
     }
 }

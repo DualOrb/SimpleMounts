@@ -17,9 +17,9 @@ import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.util.ArrayList;
 
-public class InteractHandler implements Listener {
+public class GUIHandler implements Listener {
 
-    public InteractHandler(SimpleMounts plugin) {
+    public GUIHandler(SimpleMounts plugin) {
         Bukkit.getPluginManager().registerEvents(this,plugin);
     }
 
