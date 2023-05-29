@@ -48,7 +48,6 @@ public class ErrorManager {
     public void error(String msg, Player player) {
         String sysMessage = "PLAYER " + player.getName() + "] " + msg;
         player.sendMessage(ChatColor.RED + msg);
-        player.playSound(player, Sound.ENTITY_HORSE_DEATH,1.0f,1.0f);
         player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
         Bukkit.getLogger().info(sysMessage);
 
@@ -64,7 +63,6 @@ public class ErrorManager {
     public void error(String msg, Player player, Throwable e) {
         String sysMessage = "PLAYER " + player.getName() + "] " + ChatColor.RED + "CRITICAL: " + msg + "| ERROR-INFO: " + e;
         player.sendMessage(ChatColor.RED + msg);
-        player.playSound(player, Sound.ENTITY_HORSE_DEATH,1.0f,1.0f);
         player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
         Bukkit.getLogger().info(sysMessage);
 

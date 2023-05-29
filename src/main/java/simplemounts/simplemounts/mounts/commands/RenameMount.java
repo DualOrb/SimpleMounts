@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Mount;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
@@ -57,7 +58,15 @@ public class RenameMount implements CommandExecutor {
         //Validate Name chosen
         if(name.length() > 25) {errorManager.error("Name is too long",player);return true;}
         ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
-        if(!chatManager.validateName(name)) {errorManager.error("Profanity Detected. Try again",player);return true;}
+
+        //check profanity
+        if(SimpleMounts.getMountConfig().getBoolean("basic.profanity-filtered")) {
+            String profanity = chatManager.validateName(name);
+            if(profanity != null) {
+                errorManager.error("Profanity Detected",player);
+                errorManager.log(player.getName() + " tried to rename a horse with profanity : " + profanity + " | Name: " + name + "If this was an error, please contact Nicksarmor");
+                return true;}
+        }
 
         for(Mount m: mounts) {
             if(m.isSummoned()) {

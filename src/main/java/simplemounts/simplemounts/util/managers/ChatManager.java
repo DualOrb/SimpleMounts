@@ -27,11 +27,11 @@ public class ChatManager {
 
     }
 
-    public boolean validateName(String name) {
+    public String validateName(String name) {
         for(String s: badWords) {
-            if(name.toLowerCase().contains(s)) return false;
+            if(name.toLowerCase().contains(s)) return s;
         }
-        return true;
+        return null;
     }
 
     /**

@@ -36,7 +36,7 @@ public class BreedHandler implements Listener {
 
         //May need to get re worked
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
-        
+
         if(fatherOwner != null && motherOwner != null) {
             if(!SimpleMounts.getMountConfig().getBoolean("basic.is-breedable")) {
                 errorManager.error("Breeding of mounts is disabled",player);

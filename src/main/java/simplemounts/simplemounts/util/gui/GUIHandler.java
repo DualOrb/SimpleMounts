@@ -1,6 +1,8 @@
 package simplemounts.simplemounts.util.gui;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Player;
@@ -8,6 +10,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Database;
 import simplemounts.simplemounts.util.database.Mount;
@@ -39,10 +43,18 @@ public class GUIHandler implements Listener {
     public void onPlayerInventoryClick(InventoryClickEvent event) {
         if(itemManager.getPermItems().contains(event.getCurrentItem())) event.setCancelled(true);
         if(event.getClickedInventory() == null) return; //Catch if player just presses esc to exit inventory
-        if(event.getClickedInventory().getSize() != 9) return; //May need to be more specific in terms of which inventory
 
         int clicked = event.getSlot();
         Player player = (Player)event.getWhoClicked();
+
+        //Check to see if it contains the identifying item -> player head
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta skullmeta = (SkullMeta)head.getItemMeta();
+        skullmeta.setDisplayName(ChatColor.GOLD + "Display Name: " + ChatColor.GRAY + player.getName());
+        skullmeta.setOwningPlayer(player);
+        head.setItemMeta(skullmeta);
+
+        if(!event.getClickedInventory().contains(head)) return;
 
         //If its a horse egg, summon the horse and check if all others are unsummoned
 

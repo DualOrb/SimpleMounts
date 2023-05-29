@@ -8,6 +8,7 @@ basic:
   max-mounts: 3
   is-immortal: false
   is-breedable: true
+  profanity-filtered: true
 
 #To do with models / texture packs stuff
 advanced:
