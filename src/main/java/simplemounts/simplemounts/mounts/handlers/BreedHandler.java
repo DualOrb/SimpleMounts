@@ -19,7 +19,7 @@ public class BreedHandler implements Listener {
 
     @EventHandler
     public void onBreedEvent(EntityBreedEvent event) {
-        if(!(event.getEntity() instanceof AbstractHorse)) return;
+        if(!(event.getEntity() instanceof AbstractHorse)) return;   //child must be horse
         if(!(event.getBreeder() instanceof Player)) return;
 
         Player player = (Player)event.getBreeder();
@@ -27,11 +27,16 @@ public class BreedHandler implements Listener {
         Horse father = (Horse)event.getFather();
         Horse mother = (Horse)event.getMother();
 
+        if(mother.getOwner() == null || father.getOwner() == null) return;
+
+        //essentially checking if these are two "online" players, since mounts can only exist online. Will be offline player if not
+        if(!(father.getOwner() instanceof Player) && !(mother.getOwner() instanceof Player)) return;
         Player fatherOwner = (Player)father.getOwner();
         Player motherOwner = (Player)mother.getOwner();
 
         //May need to get re worked
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        
         if(fatherOwner != null && motherOwner != null) {
             if(!SimpleMounts.getMountConfig().getBoolean("basic.is-breedable")) {
                 errorManager.error("Breeding of mounts is disabled",player);
