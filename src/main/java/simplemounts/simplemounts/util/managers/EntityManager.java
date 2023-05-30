@@ -106,7 +106,7 @@ public class EntityManager {
             horse.setTamed(true);
             horse.setAdult();
             horse.setOwner(player);
-            if(SimpleMounts.getMountConfig().getBoolean("basic.is-immortal")) horse.setInvulnerable(true);
+            if(SimpleMounts.getMountConfig().getBoolean("damage.is-immortal")) horse.setInvulnerable(true);
 
             ArrayList<Object> o = new ArrayList<>();
             o.add(entity);
@@ -249,6 +249,20 @@ public class EntityManager {
         return entities;
     }
 
+    /**
+     * Checks if the horse is a mount that is currently summoned
+     * @param horse
+     * @return
+     */
+    public boolean isMount(AbstractHorse horse) {
+        ArrayList<Entity> entities = getAllMounts();
+
+        for(Entity e: entities) {
+            if(e.getUniqueId().equals(horse.getUniqueId())) return true;
+        }
+        return false;
+    }
+
     ////////////////////////////////////////////////////
     //Serialization of Entities
     ///////////////////////////////////////////////////
@@ -287,4 +301,6 @@ public class EntityManager {
         return root;
 
     }
+
+
 }

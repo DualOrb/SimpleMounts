@@ -2,6 +2,7 @@ package simplemounts.simplemounts.mounts.commands;
 
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -76,6 +77,11 @@ public class ClaimMount implements CommandExecutor {
         if(entityManager.getOwningPlayer(horse) != null) {
             if(entityManager.getOwningPlayer(horse).equals(player)) {errorManager.error("You have already claimed this mount",player);return true;}
         }
+
+        //Now that all tests are done, apply the attribute modifiers
+        horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
+        horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
+        horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
 
         try {
             JSONObject json = entityManager.createEntitySave(horse,player);

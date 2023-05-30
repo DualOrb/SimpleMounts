@@ -1,11 +1,13 @@
 package simplemounts.simplemounts.mounts.commands;
 
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Player;
+import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.managers.ErrorManager;
@@ -44,6 +46,12 @@ public class Release implements CommandExecutor {
         h.setPersistent(true);
 
         entityManager.removeMount(player);
+
+        //reset stats to normal
+        h.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(h.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
+        h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
+        h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
+
 
         chatManager.sendPlayerMessage("Goodbye my friend...",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);

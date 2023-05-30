@@ -6,10 +6,29 @@
 #Basic Configuration
 basic:
   max-mounts: 3
-  is-immortal: false
   is-breedable: true
   profanity-filtered: true
 
 #To do with models / texture packs stuff
-advanced:
+texture-pack:
   custom-sounds: true
+
+#Damage Configuration
+damage:
+  is-immortal: false
+  #Must be not immortal for modifiers below to apply
+
+  #Percentage of damage take (As 0.xx form) with 1.00 being 100%
+  damage-modifier: 0.25
+
+  #Can the owner damage their own mount?
+  owner-can-damage: true
+
+  #when a mount dies, should it be removed from the inventory?
+  can-respawn: false
+
+#Attributes that are applied to a mount after they have been claimed -> 1.00 is normal. Recommended to disable breeding if changed
+attributes:
+  health-modifier: 1.00
+  speed-modifier: 1.00
+  jump-modifier: 1.00

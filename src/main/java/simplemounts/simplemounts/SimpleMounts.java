@@ -100,6 +100,7 @@ public final class SimpleMounts extends JavaPlugin {
         new SummonHandler(this);
         new EntityInteractHandler(this);
         new TeleportHandler(this);
+        new MountDamageHandler(this);
 
         new DistanceListener(this);
         //new ChunkDespawnHandler(this);

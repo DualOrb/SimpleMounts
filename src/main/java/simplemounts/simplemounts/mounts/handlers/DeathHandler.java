@@ -32,6 +32,11 @@ public class DeathHandler implements Listener {
         if(!entityManager.getSummonedMount(player).equals(event.getEntity())) return; //Entity killed was not the summoned mount
 
         //Now we know that we are dealing with a mount that died that was summoned
+        if(SimpleMounts.getMountConfig().getBoolean("damage.can-respawn")) {
+            horse.setHealth(horse.getMaxHealth()); //Put back to full health
+            entityManager.storeSummonedMount(player); //Store back away
+            return;
+        }
 
         entityManager.removeMount(player);
         ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
