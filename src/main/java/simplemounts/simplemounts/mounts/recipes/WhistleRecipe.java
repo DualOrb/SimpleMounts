@@ -16,7 +16,8 @@ public class WhistleRecipe {
     public WhistleRecipe() {
         whistle = new ItemStack(Material.GOAT_HORN,1);
         ItemMeta meta = whistle.getItemMeta();
-        meta.setCustomModelData(1);
+        int i = SimpleMounts.getMountConfig().getInt("texture-pack.custom-model-data-whistle");
+        meta.setCustomModelData(i);
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);

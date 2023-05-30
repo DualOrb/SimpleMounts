@@ -5,20 +5,21 @@
 
 #Basic Configuration
 basic:
-  max-mounts: 3
+  max-mounts: 3                         #Max is 8 mounts - More in the future
   is-breedable: true
   profanity-filtered: true
 
-#To do with models / texture packs stuff
+#To do with models / texture pack stuff
 texture-pack:
-  custom-sounds: true
+  custom-whistle-sound: true            #Sound to be played is "custom.whistle"
+  custom-model-data-whistle: 1
 
 #Damage Configuration
 damage:
   is-immortal: false
   #Must be not immortal for modifiers below to apply
 
-  #Percentage of damage take (As 0.xx form) with 1.00 being 100%
+  #Percentage of damage taken (As 0.xx form) with 1.00 being 100%
   damage-modifier: 0.25
 
   #Can the owner damage their own mount?
