@@ -5,10 +5,13 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.inventory.ItemStack;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
+
+import java.util.List;
 
 public class DeathHandler implements Listener {
 
@@ -35,6 +38,15 @@ public class DeathHandler implements Listener {
         if(SimpleMounts.getMountConfig().getBoolean("damage.can-respawn")) {
             horse.setHealth(horse.getMaxHealth()); //Put back to full health
             entityManager.storeSummonedMount(player); //Store back away
+
+            //Remove dropped items at location
+            List<Entity> nearbyEntities = horse.getNearbyEntities(5, 5, 5);
+            List<ItemStack> drops = event.getDrops();
+            for(Entity e: nearbyEntities) {
+                if(!(e instanceof Item)) continue;
+                Item item = (Item)e;
+                if(drops.contains(item.getItemStack())) e.remove();
+            }
             return;
         }
 
