@@ -69,6 +69,8 @@ public class EntityManager {
         Location location = player.getLocation();
         LivingEntity entity = (LivingEntity) location.getWorld().spawnEntity(location,EntityType.fromName(json.get("type").toString()));
 
+        ItemStackSerializer serializer = ServiceLocator.getLocator().getService(ItemStackSerializer.class);
+
         //Start of transaction
         try {
             ((Ageable) entity).setAge(Integer.parseInt(json.get("age").toString()));
@@ -105,7 +107,12 @@ public class EntityManager {
                 Horse h = (Horse)entity;
                 h.setColor(Horse.Color.valueOf(json.get("color").toString()));
                 h.setStyle(Horse.Style.valueOf(json.get("style").toString()));
-                if(json.get("armor") != null) {h.getInventory().setArmor(new ItemStack(Material.valueOf(json.get("armor").toString())));}
+
+                try {   //Trying to add back support for the old style of serialization
+                    if(json.get("armor") != null) {h.getInventory().setArmor(serializer.deserialize(json.get("armor").toString()));}
+                } catch(Throwable e) {
+                    if(json.get("armor") != null) {h.getInventory().setArmor(new ItemStack(Material.valueOf(json.get("armor").toString())));}
+                }
             }
 
             //Special values
@@ -280,6 +287,7 @@ public class EntityManager {
      */
     public JSONObject serializeHorse(AbstractHorse horse) {
         JSONObject root = new JSONObject();
+        ItemStackSerializer serializer = ServiceLocator.getLocator().getService(ItemStackSerializer.class);
 
         root.put("age", horse.getAge());
         root.put("name",horse.getCustomName());
@@ -290,7 +298,7 @@ public class EntityManager {
         if(horse instanceof Horse) {
             Horse h = (Horse) horse;
             root.put("color", h.getColor().name().toString());
-            if(h.getInventory().getArmor() != null) root.put("armor", h.getInventory().getArmor().getType().toString());
+            if(h.getInventory().getArmor() != null) root.put("armor", serializer.serialize(h.getInventory().getArmor()));
             root.put("style", h.getStyle().toString());
         }
 

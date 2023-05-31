@@ -17,6 +17,7 @@ import simplemounts.simplemounts.util.gui.ItemManager;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.managers.ErrorManager;
+import simplemounts.simplemounts.util.managers.ItemStackSerializer;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.io.File;
@@ -60,6 +61,7 @@ public final class SimpleMounts extends JavaPlugin {
 
         serviceLocator.registerService(ItemManager.class, new ItemManager());
         serviceLocator.registerService(GUIBuilder.class, new GUIBuilder());
+        serviceLocator.registerService(ItemStackSerializer.class, new ItemStackSerializer());
 
 
         //Check Dependencies
