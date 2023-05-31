@@ -74,6 +74,8 @@ public class GUIHandler implements Listener {
             }
         }
 
+
+
         //If shift click, release current mount. Should spawn it outside
         if(event.isRightClick() && event.isShiftClick()) {
             AbstractHorse h = em.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
