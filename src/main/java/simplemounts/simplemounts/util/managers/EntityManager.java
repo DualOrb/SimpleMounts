@@ -7,6 +7,8 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Database;
@@ -14,10 +16,7 @@ import simplemounts.simplemounts.util.database.Mount;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A class for managing rideable entities
@@ -91,6 +90,14 @@ public class EntityManager {
             }
             horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(Double.parseDouble(json.get("jump").toString()));
             horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(Double.parseDouble(json.get("speed").toString()));
+
+            //Apply needed effects to the horse
+            List<String> effects = SimpleMounts.getMountConfig().getStringList("effects");
+
+            for(String s: effects) {
+                PotionEffectType type = PotionEffectType.getByName(s.toUpperCase());
+                horse.addPotionEffect(new PotionEffect(type,PotionEffect.INFINITE_DURATION,1));
+            }
 
             if(json.get("saddle") != null) {horse.getInventory().setSaddle(new ItemStack(Material.valueOf(json.get("saddle").toString())));}
 

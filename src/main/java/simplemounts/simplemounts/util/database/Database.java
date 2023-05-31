@@ -33,13 +33,13 @@ public class Database {
     public Database() {
         errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
-        //Initial Connection
+        //Initial Connection - Mounts Data
         try {
             final String url = "jdbc:sqlite:" + String.valueOf(SimpleMounts.getMountsFolder()) + File.separator + "mounts.db";
 
             conn = DriverManager.getConnection(url);
 
-            errorManager.error("Database Connection established");
+            errorManager.log("Database Connection established");
 
             //Setting up table
             String sql = "CREATE TABLE IF NOT EXISTS mounts (\n"
@@ -57,6 +57,8 @@ public class Database {
             errorManager.error("Unable to establish Database Connection: " + e);
             throw new RuntimeException(e);
         }
+
+
     }
 
     /**
@@ -247,7 +249,30 @@ public class Database {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
+    }
 
+    public ArrayList<UUID> getTrustedPlayers(UUID mountId) {
+        String sql = "SELECT trusted_players FROM mounts WHERE mount_id = ?";
 
+        ResultSet rs;
+        try {
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1,mountId.toString());
+
+            rs = pstmt.executeQuery();
+
+            rs.next();
+            String s = rs.getString(1);
+
+            JSONParser parser = new JSONParser();
+            parser.parse(s);        //Will need to add a key to be able to get to the json array if done this way
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+
+        return null;
     }
 }

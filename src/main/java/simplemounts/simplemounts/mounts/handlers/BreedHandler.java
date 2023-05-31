@@ -1,6 +1,7 @@
 package simplemounts.simplemounts.mounts.handlers;
 
 import org.bukkit.Bukkit;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
@@ -34,7 +35,6 @@ public class BreedHandler implements Listener {
         Player fatherOwner = (Player)father.getOwner();
         Player motherOwner = (Player)mother.getOwner();
 
-        //May need to get re worked
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
         if(fatherOwner != null && motherOwner != null) {
@@ -45,8 +45,11 @@ public class BreedHandler implements Listener {
             }
         }
 
-
-
+        //Remove the newely bred horse's buffed stats -> back to normal
+        AbstractHorse horse = (AbstractHorse)event.getEntity();
+        horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
+        horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
+        horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
 
     }
 }

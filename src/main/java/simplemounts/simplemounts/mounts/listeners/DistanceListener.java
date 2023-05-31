@@ -5,6 +5,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
@@ -21,6 +22,8 @@ public class DistanceListener {
         this.plugin = plugin;
         EntityManager em = ServiceLocator.getLocator().getService(EntityManager.class);
 
+        final int range = SimpleMounts.getMountConfig().getInt("basic.leash-range");
+
         //Creates a timer task for every 5 seconds
         new BukkitRunnable() {
             public void run() {
@@ -35,7 +38,7 @@ public class DistanceListener {
                     double distance = calcDistance(horse,player);
 
                     //if outside the range, then store the mount
-                    if(distance > 15) {
+                    if(distance > range) {
                         em.storeSummonedMount(player);
                     }
                 }

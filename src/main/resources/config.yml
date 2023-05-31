@@ -5,9 +5,10 @@
 
 #Basic Configuration
 basic:
-  max-mounts: 3                         #Max is 8 mounts - More in the future
+  max-mounts: 3                         #Hard Max is 8 mounts - More in the future
   is-breedable: true
   profanity-filtered: true
+  leash-range: 20
 
 #To do with models / texture pack stuff
 texture-pack:
@@ -33,3 +34,8 @@ attributes:
   health-modifier: 1.00
   speed-modifier: 1.00
   jump-modifier: 1.00
+
+#effects that should be applied to the horse for infinate amount of time. Refer to list: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/potion/PotionEffectType.html
+effects:
+#   - BLINDNESS
+#   - JUMP
