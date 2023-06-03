@@ -96,7 +96,7 @@ public class MountsPage {
             DecimalFormat df = new DecimalFormat("0.0");
 
             lore.add(ChatColor.RED +   "Health : " + ChatColor.GRAY + df.format(Double.parseDouble(e.get("health").toString())) + "/" + df.format(Double.parseDouble(e.get("max-health").toString())));
-            lore.add(ChatColor.AQUA +  "Speed : " + ChatColor.GRAY + df.format((Double.parseDouble(e.get("speed").toString())) * 42.16d) + " bps");
+            lore.add(ChatColor.AQUA +  "Speed : " + ChatColor.GRAY + df.format((Double.parseDouble(e.get("speed").toString())) * 43.17d) + " bps");
             lore.add(ChatColor.GREEN + "Jump   : " + ChatColor.GRAY + getJumpInBlocks((Double.parseDouble(e.get("jump").toString()))) + " blocks");//df.format((((Double.parseDouble(e.get("jump").toString()))-0.4)/(1.0 - 0.4))*100) + "%");
             lore.add(ChatColor.DARK_GRAY + "------------");
             if(mounts.get(counter).isSummoned()) {
