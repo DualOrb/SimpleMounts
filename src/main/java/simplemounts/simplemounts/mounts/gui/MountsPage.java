@@ -142,7 +142,6 @@ public class MountsPage {
         final double STEP = (higherBound - lowerBound) / DIVISOR;
 
         double calcWeightedValue = (value - lowerBound) / STEP;
-        Bukkit.getLogger().info("Step =" + STEP + " WeightedValue = " + calcWeightedValue);
         for(int i = 0; i < DIVISOR; i ++) {
             returnString += shoe;
             if(i > calcWeightedValue) returnString += ChatColor.GRAY;

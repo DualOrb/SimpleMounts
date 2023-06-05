@@ -42,7 +42,6 @@ public class EntityInteractHandler implements Listener {
 
         if(h1.getEntityId() != (h2.getEntityId())) {errorManager.error("This is not your mount",player); event.setCancelled(true);return;}
 
-
         return;
     }
 }
