@@ -1,5 +1,6 @@
 package simplemounts.simplemounts.util.managers;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -23,7 +24,7 @@ import java.util.*;
  */
 public class EntityManager {
 
-    private static HashMap<Player, ArrayList<Object>> summonedMounts;   //ArrayList is defined as HorseEntity,index
+    private static HashMap<Player, Mount> summonedMounts;   //ArrayList is defined as HorseEntity,index
     private static ErrorManager errorManager;
     private static Database database;
 
@@ -122,10 +123,9 @@ public class EntityManager {
             horse.setOwner(player);
             if(SimpleMounts.getMountConfig().getBoolean("damage.is-immortal")) horse.setInvulnerable(true);
 
-            ArrayList<Object> o = new ArrayList<>();
-            o.add(entity);
-            o.add(m.getMountId());
-            summonedMounts.put(player,o);
+            m.setEntityId(horse.getUniqueId());
+
+            summonedMounts.put(player,m);
 
             updateSummonTag(player,horse,true);
 
@@ -146,8 +146,8 @@ public class EntityManager {
         if(summonedMounts.isEmpty()) {errorManager.error("No mounts to store!",player);return;}
         if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
 
-        AbstractHorse e = (AbstractHorse)summonedMounts.get(player).get(0);
-        UUID uuid = UUID.fromString(summonedMounts.get(player).get(1).toString());
+        AbstractHorse e = (AbstractHorse) Bukkit.getEntity(summonedMounts.get(player).getEntityId());
+        UUID uuid = summonedMounts.get(player).getMountId();
         updateSummonTag(player,e,false);
         database.updateMount(player,uuid,"horse_data",serializeHorse(e));
 
@@ -169,11 +169,11 @@ public class EntityManager {
      */
     public void updateSummonTag(Player player, AbstractHorse horse, boolean b) {
         if(b) { //True, adds entity to file
-            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",1);
-            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",horse.getUniqueId());
+            database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"isSummoned",1);
+            database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"entity_id",horse.getUniqueId());
         } else {    //Removes tag from database
-            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"isSummoned",0);
-            database.updateMount(player,(UUID)summonedMounts.get(player).get(1),"entity_id",null);
+            database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"isSummoned",0);
+            database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"entity_id",null);
         }
 
     }
@@ -184,13 +184,13 @@ public class EntityManager {
      */
     public boolean isSummoned(Player player) {
         if(!summonedMounts.containsKey(player)) return false;
-        if(summonedMounts.get(player).isEmpty()) return false;
+        if(summonedMounts.get(player) == null) return false;
         return true;
     }
 
     public Entity getSummonedMount(Player player) {
         if(summonedMounts.get(player) == null) return null;
-        return (Entity)summonedMounts.get(player).get(0);
+        return Bukkit.getEntity(summonedMounts.get(player).getEntityId());
     }
 
     /**
@@ -198,8 +198,8 @@ public class EntityManager {
      * @param player
      */
     public void removeMount(Player player) {
-        AbstractHorse h = (AbstractHorse)summonedMounts.get(player).get(0);
-        UUID uuid = UUID.fromString(summonedMounts.get(player).get(1).toString());
+        AbstractHorse h = (AbstractHorse)Bukkit.getEntity(summonedMounts.get(player).getEntityId());
+        UUID uuid = summonedMounts.get(player).getMountId();
 
         summonedMounts.remove(player);
 
@@ -207,14 +207,13 @@ public class EntityManager {
     }
 
     /**
-     * Despawns all the currenly summoned mounts on the server
+     * Despawns all the currently summoned mounts on the server
      */
     public void despawnAllMounts() {
 
-        for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
+        for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
-            ArrayList<Object> objects = entry.getValue();
-            AbstractHorse horse = (AbstractHorse)objects.get(0);
+            AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
             horse.remove();
             updateSummonTag(player,horse,false);
         }
@@ -236,10 +235,9 @@ public class EntityManager {
      * @return
      */
     public Player getOwningPlayer(AbstractHorse h1) {
-        for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
+        for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
-            ArrayList<Object> objects = entry.getValue();
-            AbstractHorse horse = (AbstractHorse)objects.get(0);
+            AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
 
             if(horse.getEntityId() == h1.getEntityId()) return player;
         }
@@ -253,10 +251,9 @@ public class EntityManager {
     public ArrayList<Entity> getAllMounts() {
         ArrayList<Entity> entities = new ArrayList<>();
 
-        for(Map.Entry<Player, ArrayList<Object>> entry : summonedMounts.entrySet()) {
+        for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
-            ArrayList<Object> objects = entry.getValue();
-            AbstractHorse horse = (AbstractHorse)objects.get(0);
+            AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
 
             entities.add(horse);
         }
@@ -318,4 +315,11 @@ public class EntityManager {
     }
 
 
+    public void addTrustedPlayer(Player player, Player trusted) {
+    }
+
+
+    public void removeTrustedPlayer(Player player, Player trusted) {
+
+    }
 }

@@ -50,6 +50,8 @@ public class Mount {
         return entityId;
     }
 
+    public void setEntityId(UUID uuid) {entityId = uuid;}
+
     public String toString() {
         return "OwnerID:"+ownerId+",MountID:"+mountId+",HorseData:"+horseData+",isSummed"+isSummoned+",EntityId:"+entityId;
     }
