@@ -39,3 +39,11 @@ commands:
     description: Releases the currently summoned mount
     usage: /<mrelease>
     permission: SimpleMounts.release
+  mtrust:
+    description: Trusts a player to use your mount
+    usage: /<mtrust player>
+    permission: SimpleMounts.trust
+  muntrust:
+    description: Untrusts a player from using your mount
+    usage: /<muntrust player>
+    permission: SimpleMounts.trust

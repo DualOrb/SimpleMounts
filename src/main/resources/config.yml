@@ -8,7 +8,13 @@ basic:
   max-mounts: 3                         #Hard Max is 8 mounts - More in the future
   is-breedable: true
   profanity-filtered: true
+
+  #Leash, as in mount will store when x blocks away from player
+  leash-enabled: false
   leash-range: 20
+
+  ride-when-summoned: true
+  store-on-dismount: false
 
 #To do with models / texture pack stuff
 texture-pack:

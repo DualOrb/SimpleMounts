@@ -1,11 +1,13 @@
 package simplemounts.simplemounts.mounts.listeners;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.util.database.Mount;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
@@ -27,11 +29,16 @@ public class DistanceListener {
         //Creates a timer task for every 5 seconds
         new BukkitRunnable() {
             public void run() {
+                if(!SimpleMounts.getMountConfig().getBoolean("basic.leash-enabled")) return;
+
+                final int range = SimpleMounts.getMountConfig().getInt("basic.leash-range");
                 //Get the current map / players / mounts
-                ArrayList<Entity> entities = em.getAllMounts();
+                ArrayList<Mount> entities = em.getAllMounts();
 
                 //All players in this list are known to be online
-                for(Entity e: entities) {
+                for(Mount m: entities) {
+                    Entity e = Bukkit.getEntity(m.getEntityId());
+
                     AbstractHorse horse = (AbstractHorse)e;
                     Player player = (Player)horse.getOwner();
 

@@ -118,10 +118,14 @@ public class EntityManager {
 
             //Special values
             horse.setPersistent(true);
+            horse.setRemoveWhenFarAway(false);
+
             horse.setTamed(true);
             horse.setAdult();
             horse.setOwner(player);
             if(SimpleMounts.getMountConfig().getBoolean("damage.is-immortal")) horse.setInvulnerable(true);
+
+            if(SimpleMounts.getMountConfig().getBoolean("basic.ride-when-summoned")) horse.addPassenger(player);
 
             m.setEntityId(horse.getUniqueId());
 
@@ -147,6 +151,32 @@ public class EntityManager {
         if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
 
         AbstractHorse e = (AbstractHorse) Bukkit.getEntity(summonedMounts.get(player).getEntityId());
+        UUID uuid = summonedMounts.get(player).getMountId();
+        updateSummonTag(player,e,false);
+        database.updateMount(player,uuid,"horse_data",serializeHorse(e));
+
+        //If on lead, drop lead
+        if(e.isLeashed()) player.getWorld().dropItem(e.getLocation(),new ItemStack(Material.LEAD,1));
+
+        e.remove();
+        summonedMounts.remove(player);
+
+        ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
+
+        cm.sendPlayerMessage("Stored Mount",player);
+        player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ARMOR,1.0f,1.0f);
+
+    }
+
+    /**
+     * Removes a mount from the world that the player currently has summoned, with the entity in question passed in
+     * ***For cases where getEntity could possibly return null
+     * @param player
+     */
+    public void storeSummonedMount(Player player, AbstractHorse e) {
+        if(summonedMounts.isEmpty()) {errorManager.error("No mounts to store!",player);return;}
+        if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
+
         UUID uuid = summonedMounts.get(player).getMountId();
         updateSummonTag(player,e,false);
         database.updateMount(player,uuid,"horse_data",serializeHorse(e));
@@ -248,14 +278,17 @@ public class EntityManager {
      * Returns all the currently summoned mounts
      * @return
      */
-    public ArrayList<Entity> getAllMounts() {
-        ArrayList<Entity> entities = new ArrayList<>();
+    public ArrayList<Mount> getAllMounts() {
+        ArrayList<Mount> entities = new ArrayList<>();
 
+        //Maybe keys are saved even with a remove?
         for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
-            AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
+            if(entry.getValue() == null) continue;
 
-            entities.add(horse);
+            Mount m = entry.getValue();
+
+            entities.add(m);
         }
         return entities;
     }
@@ -266,12 +299,34 @@ public class EntityManager {
      * @return
      */
     public boolean isMount(AbstractHorse horse) {
-        ArrayList<Entity> entities = getAllMounts();
+        ArrayList<Mount> entities = getAllMounts();
 
-        for(Entity e: entities) {
-            if(e.getUniqueId().equals(horse.getUniqueId())) return true;
+        for(Mount m: entities) {
+            if(m.getEntityId().equals(horse.getUniqueId())) return true;
         }
         return false;
+    }
+
+    /**
+     * Checks if the horse is a mount that is currently summoned
+     * @param horseId
+     * @return
+     */
+    public boolean isMount(UUID horseId) {
+        ArrayList<Mount> entities = getAllMounts();
+
+        for(Mount m: entities) {
+            if(m.getEntityId().equals(horseId)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Removes a horse but only from the cached data structure, not that backend
+     * @param player
+     */
+    public void unCacheHorse(Player player) {
+        summonedMounts.remove(player);
     }
 
     ////////////////////////////////////////////////////

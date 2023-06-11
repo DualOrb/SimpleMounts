@@ -104,9 +104,11 @@ public final class SimpleMounts extends JavaPlugin {
         new TeleportHandler(this);
         new MountDamageHandler(this);
         new PortalHandler(this);
+        new EntitiesUnloadHandler(this);
+        new DismountHandler(this);
 
         new DistanceListener(this);
-        //new ChunkDespawnHandler(this);
+        //new ChunkUnloadHandler(this);
 
         //Register Commands
         this.getCommand("mounts").setExecutor(new OpenMounts());
@@ -117,6 +119,8 @@ public final class SimpleMounts extends JavaPlugin {
         this.getCommand("mreload").setExecutor(new Reload());
         this.getCommand("mride").setExecutor(new Ride());
         this.getCommand("mrelease").setExecutor(new Release());
+        this.getCommand("mtrust").setExecutor(new Trust());
+        this.getCommand("muntrust").setExecutor(new Untrust());
 //        this.getCommand("RPGCard").setTabCompleter(new CharacterCardTabComplete());
         log("Commands Loaded");
 
