@@ -7,6 +7,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
@@ -55,6 +56,14 @@ public class Release implements CommandExecutor {
 
         chatManager.sendPlayerMessage("Goodbye my friend...",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
+
+        //Code for walking away
+        double pitch = ((player.getLocation().getPitch() + 90) * Math.PI) / 180;
+        double yaw  = ((player.getLocation().getYaw() + 90)  * Math.PI) / 180;
+
+        Vector vector = new Vector(Math.sin(pitch) * Math.cos(yaw), Math.cos(pitch), Math.sin(pitch) * Math.sin(yaw));
+
+        h.setVelocity(vector);
 
         return true;
 

@@ -161,11 +161,13 @@ public class EntityManager {
         e.remove();
         summonedMounts.remove(player);
 
+        EffectManager effectManager = ServiceLocator.getLocator().getService(EffectManager.class);
+
         ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
         cm.sendPlayerMessage("Stored Mount",player);
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ARMOR,1.0f,1.0f);
-
+        effectManager.mountStoreEffect(player,e);
     }
 
     /**

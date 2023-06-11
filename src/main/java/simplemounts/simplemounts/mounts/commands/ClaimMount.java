@@ -1,5 +1,6 @@
 package simplemounts.simplemounts.mounts.commands;
 
+import org.bukkit.Effect;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
@@ -11,6 +12,7 @@ import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Mount;
 import simplemounts.simplemounts.util.managers.ChatManager;
+import simplemounts.simplemounts.util.managers.EffectManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
 import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
@@ -91,6 +93,10 @@ public class ClaimMount implements CommandExecutor {
             chatManager.sendPlayerMessage("You have tamed a " + horse.getType().toString().toLowerCase() + "!", player);
             player.spawnParticle(Particle.CRIT,player.getLocation(),5);
             player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST,1.0f,1.0f);
+
+            EffectManager effectManager = ServiceLocator.getLocator().getService(EffectManager.class);
+
+            effectManager.mountClaimEffect(player);
 
         } catch (Throwable e) {
             //General Exception. Undo all actions
