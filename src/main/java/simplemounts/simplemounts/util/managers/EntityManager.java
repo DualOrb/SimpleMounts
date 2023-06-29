@@ -269,6 +269,7 @@ public class EntityManager {
     public Player getOwningPlayer(AbstractHorse h1) {
         for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
+
             AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
 
             if(horse.getEntityId() == h1.getEntityId()) return player;

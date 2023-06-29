@@ -37,6 +37,8 @@ public class ServerCommunicator {
         this.plugin = plugin;
         String ipAddress = plugin.getServer().getIp();
 
+
+
 //        //Establish Connection
 //        URL url = new URL("www.simplemounts.com/admin-panel");
 //        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();

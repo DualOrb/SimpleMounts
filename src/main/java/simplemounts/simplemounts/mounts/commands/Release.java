@@ -55,6 +55,7 @@ public class Release implements CommandExecutor {
 
 
         chatManager.sendPlayerMessage("Goodbye my friend...",player);
+        if(!h.getPassengers().isEmpty()) h.eject();
         player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
 
         //Code for walking away

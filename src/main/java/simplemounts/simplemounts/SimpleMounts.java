@@ -99,7 +99,6 @@ public final class SimpleMounts extends JavaPlugin {
         new RidingHandler(this);
         new SummonHandler(this);
         new EntityInteractHandler(this);
-        new TeleportHandler(this);
         new MountDamageHandler(this);
         new PortalHandler(this);
         new EntitiesUnloadHandler(this);

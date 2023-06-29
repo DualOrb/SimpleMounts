@@ -17,7 +17,7 @@ public class RidingHandler implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onEntityMountEvent(EntityMountEvent event) {
 
         if(!(event.getMount() instanceof AbstractHorse)) return;
@@ -27,6 +27,8 @@ public class RidingHandler implements Listener {
         Player player = (Player)event.getEntity();
 
         AbstractHorse h1 = (AbstractHorse)event.getMount();
+
+        if(h1 == null || player == null) return;
 
         EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 

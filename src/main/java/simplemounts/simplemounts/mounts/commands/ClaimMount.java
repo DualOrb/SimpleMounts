@@ -91,7 +91,6 @@ public class ClaimMount implements CommandExecutor {
             horse.remove(); //Remove original horse
 
             chatManager.sendPlayerMessage("You have tamed a " + horse.getType().toString().toLowerCase() + "!", player);
-            player.spawnParticle(Particle.CRIT,player.getLocation(),5);
             player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST,1.0f,1.0f);
 
             EffectManager effectManager = ServiceLocator.getLocator().getService(EffectManager.class);
