@@ -7,6 +7,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.EntityManager;
+import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 public class LogoutHandler implements Listener {
@@ -18,8 +19,12 @@ public class LogoutHandler implements Listener {
     @EventHandler
     public void onPlayerQuitEvent(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-        entityManager.storeSummonedMount(player);
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        try {
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            entityManager.storeSummonedMount(player);
+        } catch (Throwable e) {
+            errorManager.error("Player Logout - Internal Failure",player,e);
+        }
     }
 }

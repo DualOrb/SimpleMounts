@@ -22,25 +22,32 @@ public class EntityInteractHandler implements Listener {
 
         if (!(event.getRightClicked() instanceof AbstractHorse)) return;
 
-        Player player = (Player) event.getPlayer();
-
-        AbstractHorse h1 = (AbstractHorse) event.getRightClicked();
-
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-
-        Player owningPlayer = entityManager.getOwningPlayer(h1);
-        if (owningPlayer == null) return; //If is not a currently summoned mount, then its wild and player can ride
-
-        AbstractHorse h2 = (AbstractHorse) entityManager.getSummonedMount(player);
-
+        Player player = event.getPlayer();
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
-        if (h2 == null) {
-            errorManager.error("This is not your mount.", player);
-            event.setCancelled(true);
-            return;
+
+        try {
+            AbstractHorse h1 = (AbstractHorse) event.getRightClicked();
+
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+            Player owningPlayer = entityManager.getOwningPlayer(h1);
+            if (owningPlayer == null) return; //If is not a currently summoned mount, then its wild and player can ride
+
+            AbstractHorse h2 = (AbstractHorse) entityManager.getSummonedMount(player);
+
+
+            if (h2 == null) {
+                errorManager.error("This is not your mount.", player);
+                event.setCancelled(true);
+                return;
+            }
+
+            if(h1.getEntityId() != (h2.getEntityId())) {errorManager.error("This is not your mount",player); event.setCancelled(true);return;}
+
+        } catch (Throwable e) {
+            errorManager.error("PlayerInteractEntity - Internal Failure",player,e);
         }
 
-        if(h1.getEntityId() != (h2.getEntityId())) {errorManager.error("This is not your mount",player); event.setCancelled(true);return;}
 
         return;
     }

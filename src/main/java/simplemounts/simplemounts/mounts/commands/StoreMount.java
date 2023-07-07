@@ -5,6 +5,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.util.managers.EntityManager;
+import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 public class StoreMount implements CommandExecutor {
@@ -23,8 +24,15 @@ public class StoreMount implements CommandExecutor {
         if(!(sender.hasPermission("SimpleMounts.ClaimMounts"))) {return false;}
 
         Player player = (Player) sender;
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-        entityManager.storeSummonedMount(player);
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+
+        try {
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            entityManager.storeSummonedMount(player);
+        } catch (Throwable e) {
+            errorManager.error("Unable to store mount", player, e);
+        }
+
 
         return true;
     }

@@ -17,14 +17,20 @@ public class Reload implements CommandExecutor {
             return false;
         }
 
-        SimpleMounts.reloadCustomConfig();
         String s = "Reloaded Simple Mounts Config";
 
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        if(!(sender instanceof Player)) {errorManager.error(s);return true;}
-        chatManager.sendPlayerMessage(s,(Player)sender);
+
+
+        try {
+            SimpleMounts.reloadCustomConfig();
+            if(!(sender instanceof Player)) {errorManager.error(s);return true;}
+            chatManager.sendPlayerMessage(s,(Player)sender);
+        } catch (Throwable e) {
+            errorManager.error("Failed to reload config from file",e);
+        }
         return true;
 
     }

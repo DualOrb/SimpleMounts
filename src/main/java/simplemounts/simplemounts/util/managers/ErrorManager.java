@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.util.database.Log;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,7 +22,8 @@ import static java.nio.file.StandardOpenOption.CREATE;
 public class ErrorManager {
 
     private final Path systemLogPath;
-    private final String filename = "system.log";
+    private final Path errorLogPath;
+
 
     /**
      * Initializes the log file if not there
@@ -30,9 +32,11 @@ public class ErrorManager {
         Path path = SimpleMounts.getPluginFolder();
 
         //Construct log file if not there
-        Path.of(String.valueOf(path),filename);
+        Path.of(String.valueOf(path),"system.log");
+        Path.of(String.valueOf(path),"errors.log");
 
-        systemLogPath = Paths.get(String.valueOf(path),filename);
+        systemLogPath = Paths.get(String.valueOf(path),"system.log");
+        errorLogPath = Paths.get(String.valueOf(path),"errors.log");
     }
 
     public void log(String msg) {
@@ -42,6 +46,11 @@ public class ErrorManager {
     //System level logs
     public void error(String msg) {
         writeToLogFile("SYSTEM]" + msg);
+    }
+
+    public void error(String msg, Throwable e) {
+        Log log = new Log(msg, "SYSTEM",e);
+        writeToLogFile(log);
     }
 
     //User Errors
@@ -61,12 +70,14 @@ public class ErrorManager {
      * @param e
      */
     public void error(String msg, Player player, Throwable e) {
+        Log log = new Log(msg,"PLAYER: " + player.getName(), e);
+
         String sysMessage = "PLAYER " + player.getName() + "] " + ChatColor.RED + "CRITICAL: " + msg + "| ERROR-INFO: " + e;
         player.sendMessage(ChatColor.RED + msg);
         player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
         Bukkit.getLogger().info(sysMessage);
 
-        writeToLogFile(msg);
+        writeToLogFile(log);
 
     }
 
@@ -76,6 +87,14 @@ public class ErrorManager {
 
         try {
             Files.writeString(systemLogPath, s + System.lineSeparator(), CREATE, APPEND);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void writeToLogFile(Log log) {
+        try {
+            Files.writeString(systemLogPath, log.toString(), CREATE, APPEND);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

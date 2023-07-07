@@ -31,61 +31,63 @@ public class ClaimMount implements CommandExecutor {
      */
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+
         if(!(sender instanceof Player)) return true;
         if(!(sender.hasPermission("SimpleMounts.ClaimMounts"))) {return true;}
 
         Player player = (Player) sender;
-
-        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
-        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
-
-        //environment checks
-        if(!(player.getVehicle() instanceof LivingEntity)) {//Checks if its a living entity the player is riding
-            errorManager.error("Must be riding a ridable living entity to claim", player);
-            return true;
-        }
-
-        LivingEntity le = (LivingEntity)player.getVehicle();
-
-        if(le instanceof Pig || le instanceof Strider) {
-            errorManager.error("You really think I'd let you claim this as a mount?", player);
-            return true;
-        }
-
-        //Code for claiming of mount
-        if(!(le instanceof Horse || le instanceof SkeletonHorse || le instanceof ZombieHorse)) {
-            errorManager.error("Only entities of type horse, skele horse, and zombie horse, are supported at the moment", player);
-            return true;    //temporary till more types
-        }
-
-        AbstractHorse horse = (AbstractHorse)le;
-
-        //Current supported mounts
-        if(horse.getOwner() == null && !(le instanceof SkeletonHorse) && !(le instanceof ZombieHorse)) {
-            errorManager.error("The Horse must be tamed before you can claim it.",player);
-            return true;
-        }
-
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-
-        ArrayList<Mount> mounts = entityManager.getMounts(player);
-
-        //Check if player is already at the max amount of mounts
-        if(mounts.size() >= SimpleMounts.getMountConfig().getInt("basic.max-mounts")) {
-            errorManager.error("You are currently at the max amount of mounts",player);
-            return true;
-        }
-
-        if(entityManager.getOwningPlayer(horse) != null) {
-            if(entityManager.getOwningPlayer(horse).equals(player)) {errorManager.error("You have already claimed this mount",player);return true;}
-        }
-
-        //Now that all tests are done, apply the attribute modifiers
-        horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
-        horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
-        horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
-
         try {
+
+
+            ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
+
+            //environment checks
+            if(!(player.getVehicle() instanceof LivingEntity)) {//Checks if its a living entity the player is riding
+                errorManager.error("Must be riding a ridable living entity to claim", player);
+                return true;
+            }
+
+            LivingEntity le = (LivingEntity)player.getVehicle();
+
+            if(le instanceof Pig || le instanceof Strider) {
+                errorManager.error("You really think I'd let you claim this as a mount?", player);
+                return true;
+            }
+
+            //Code for claiming of mount
+            if(!(le instanceof Horse || le instanceof SkeletonHorse || le instanceof ZombieHorse)) {
+                errorManager.error("Only entities of type horse, skele horse, and zombie horse, are supported at the moment", player);
+                return true;    //temporary till more types
+            }
+
+            AbstractHorse horse = (AbstractHorse)le;
+
+            //Current supported mounts
+            if(horse.getOwner() == null && !(le instanceof SkeletonHorse) && !(le instanceof ZombieHorse)) {
+                errorManager.error("The Horse must be tamed before you can claim it.",player);
+                return true;
+            }
+
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+            ArrayList<Mount> mounts = entityManager.getMounts(player);
+
+            //Check if player is already at the max amount of mounts
+            if(mounts.size() >= SimpleMounts.getMountConfig().getInt("basic.max-mounts")) {
+                errorManager.error("You are currently at the max amount of mounts",player);
+                return true;
+            }
+
+            if(entityManager.getOwningPlayer(horse) != null) {
+                if(entityManager.getOwningPlayer(horse).equals(player)) {errorManager.error("You have already claimed this mount",player);return true;}
+            }
+
+            //Now that all tests are done, apply the attribute modifiers
+            horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
+            horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
+            horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() * SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
+
             JSONObject json = entityManager.createEntitySave(horse,player);
 
             horse.remove(); //Remove original horse
@@ -97,11 +99,11 @@ public class ClaimMount implements CommandExecutor {
 
             effectManager.mountClaimEffect(player);
 
-        } catch (Throwable e) {
-            //General Exception. Undo all actions
-            errorManager.error("Failed to write entity to file", player,e);
 
+        } catch (Throwable e) {
+            errorManager.error("Failed to claim mount", player,e);
         }
+
         return true;
     }
 

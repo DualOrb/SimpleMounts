@@ -30,24 +30,29 @@ public class Untrust implements CommandExecutor {
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         Player player = (Player) sender;
 
-        if (args.length != 1) {
-            errorManager.error("Invalid number of arguments", player);
-            return true;
+        try {
+            if (args.length != 1) {
+                errorManager.error("Invalid number of arguments", player);
+                return true;
+            }
+
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+            if (entityManager.isSummoned(player)) {
+                errorManager.error("Must have a mount summoned");
+                return true;
+            }
+
+            if (Bukkit.getPlayer(args[0]) == null) {
+                errorManager.error("Player to be trusted must be online");
+                return true;
+            }
+
+            entityManager.removeTrustedPlayer(player, Bukkit.getPlayer(args[0]));
+        } catch (Throwable e) {
+            errorManager.error("Failed to untrust player",player,e);
         }
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-
-        if (entityManager.isSummoned(player)) {
-            errorManager.error("Must have a mount summoned");
-            return true;
-        }
-
-        if (Bukkit.getPlayer(args[0]) == null) {
-            errorManager.error("Player to be trusted must be online");
-            return true;
-        }
-
-        entityManager.removeTrustedPlayer(player, Bukkit.getPlayer(args[0]));
 
         return true;
     }

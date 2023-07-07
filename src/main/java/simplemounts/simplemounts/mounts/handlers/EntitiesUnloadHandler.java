@@ -13,6 +13,7 @@ import org.bukkit.event.world.EntitiesUnloadEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.ChatManager;
 import simplemounts.simplemounts.util.managers.EntityManager;
+import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.util.UUID;
@@ -34,20 +35,26 @@ public class EntitiesUnloadHandler implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEntitiesUnloadHandler(EntitiesUnloadEvent event) {
 
-        for(Entity e: event.getEntities()) {
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
-            UUID id = e.getUniqueId();
+        try {
+            for(Entity e: event.getEntities()) {
 
-            if(!(e instanceof AbstractHorse)) continue;
-            if(!entityManager.isMount(id)) continue;
+                UUID id = e.getUniqueId();
 
-            AbstractHorse horse = (AbstractHorse)e;
+                if(!(e instanceof AbstractHorse)) continue;
+                if(!entityManager.isMount(id)) continue;
 
-            if(!(horse.getOwner() instanceof Player)) continue;
+                AbstractHorse horse = (AbstractHorse)e;
 
-            Player player = (Player)horse.getOwner();
+                if(!(horse.getOwner() instanceof Player)) continue;
 
-            entityManager.storeSummonedMount(player,horse);
+                Player player = (Player)horse.getOwner();
+
+                entityManager.storeSummonedMount(player,horse);
+            }
+        } catch (Throwable e) {
+            errorManager.error("Entities Unload Handler - Internal Failure", e);
         }
     }
 }

@@ -10,6 +10,7 @@ import org.bukkit.event.entity.EntityBreedEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.EntityManager;
+import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 public class MountDamageHandler implements Listener {
@@ -27,36 +28,41 @@ public class MountDamageHandler implements Listener {
         Player player = (Player)event.getDamager();
         AbstractHorse horse = (AbstractHorse)event.getEntity();
 
-        if(horse.getOwner() == null) return;
-        if(!(horse.getOwner() instanceof Player)) return; //Checking if player is offline or not
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
-        Player owner = (Player)horse.getOwner();
+        try {
+            if(horse.getOwner() == null) return;
+            if(!(horse.getOwner() instanceof Player)) return; //Checking if player is offline or not
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            Player owner = (Player)horse.getOwner();
 
-        if(!entityManager.isMount(horse)) return;
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        //Now we know that this is a mount that is being damaged
+            if(!entityManager.isMount(horse)) return;
 
-        //If immortal, cancel event
-        if(SimpleMounts.getMountConfig().getBoolean("damage.is-immortal")) {
-            event.setCancelled(true);
-            return;
-        }
+            //Now we know that this is a mount that is being damaged
 
-        //Check if owner can damage
-        if(player.getUniqueId().equals(owner.getUniqueId())) {
-            if(!SimpleMounts.getMountConfig().getBoolean("damage.owner-can-damage")) {
+            //If immortal, cancel event
+            if(SimpleMounts.getMountConfig().getBoolean("damage.is-immortal")) {
                 event.setCancelled(true);
                 return;
             }
+
+            //Check if owner can damage
+            if(player.getUniqueId().equals(owner.getUniqueId())) {
+                if(!SimpleMounts.getMountConfig().getBoolean("damage.owner-can-damage")) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+
+            //Apply damage modifier to damage
+            Double damageMod = SimpleMounts.getMountConfig().getDouble("damage.damage-modifier");
+
+            event.setDamage(event.getDamage() * damageMod);
+        } catch (Throwable e) {
+            errorManager.error("Mount Damage Handler - Internal Failure",player,e);
         }
-
-        //Apply damage modifier to damage
-        Double damageMod = SimpleMounts.getMountConfig().getDouble("damage.damage-modifier");
-
-        event.setDamage(event.getDamage() * damageMod);
-
 
     }
 }

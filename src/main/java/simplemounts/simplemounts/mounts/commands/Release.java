@@ -32,39 +32,43 @@ public class Release implements CommandExecutor {
         }
 
         Player player = (Player) sender;
-
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
-        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        if(!entityManager.isSummoned(player)) {
-            errorManager.error("Must first have a summoned mount", player);
-            return true;
+        try {
+            ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
+            if(!entityManager.isSummoned(player)) {
+                errorManager.error("Must first have a summoned mount", player);
+                return true;
+            }
+            AbstractHorse h = (AbstractHorse)entityManager.getSummonedMount(player);
+
+            //Correcting to vanilla spawns
+            h.setPersistent(true);
+
+            entityManager.removeMount(player);
+
+            //reset stats to normal
+            h.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(h.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
+            h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
+            h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
+
+
+            chatManager.sendPlayerMessage("Goodbye my friend...",player);
+            if(!h.getPassengers().isEmpty()) h.eject();
+            player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
+
+            //Code for walking away
+            double pitch = ((player.getLocation().getPitch() + 90) * Math.PI) / 180;
+            double yaw  = ((player.getLocation().getYaw() + 90)  * Math.PI) / 180;
+
+            Vector vector = new Vector(Math.sin(pitch) * Math.cos(yaw), Math.cos(pitch), Math.sin(pitch) * Math.sin(yaw));
+
+            h.setVelocity(vector);
+        } catch (Throwable e) {
+            errorManager.error("Failed to release mount", player,e);
         }
-        AbstractHorse h = (AbstractHorse)entityManager.getSummonedMount(player);
-
-        //Correcting to vanilla spawns
-        h.setPersistent(true);
-
-        entityManager.removeMount(player);
-
-        //reset stats to normal
-        h.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(h.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.health-modifier"));
-        h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(h.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
-        h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(h.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
-
-
-        chatManager.sendPlayerMessage("Goodbye my friend...",player);
-        if(!h.getPassengers().isEmpty()) h.eject();
-        player.playSound(player.getLocation(), Sound.ENTITY_HORSE_ANGRY,1.0f,1.0f);
-
-        //Code for walking away
-        double pitch = ((player.getLocation().getPitch() + 90) * Math.PI) / 180;
-        double yaw  = ((player.getLocation().getYaw() + 90)  * Math.PI) / 180;
-
-        Vector vector = new Vector(Math.sin(pitch) * Math.cos(yaw), Math.cos(pitch), Math.sin(pitch) * Math.sin(yaw));
-
-        h.setVelocity(vector);
 
         return true;
 

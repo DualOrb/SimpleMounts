@@ -9,6 +9,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.spigotmc.event.entity.EntityDismountEvent;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.EntityManager;
+import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 public class DismountHandler implements Listener {
@@ -25,13 +26,20 @@ public class DismountHandler implements Listener {
         if(!(event.getDismounted() instanceof AbstractHorse)) return;
 
         Player player = (Player)event.getEntity();
-        AbstractHorse horse = (AbstractHorse)event.getDismounted();
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        try {
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            AbstractHorse horse = (AbstractHorse)event.getDismounted();
 
-        if(!entityManager.isSummoned(player)) return;
-        if(!entityManager.isMount(horse)) return;
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        entityManager.storeSummonedMount(player);
+            if(!entityManager.isSummoned(player)) return;
+            if(!entityManager.isMount(horse)) return;
+
+            entityManager.storeSummonedMount(player);
+
+        } catch (Throwable e) {
+            errorManager.error("Dismount Handler - Internal Failure", player,e);
+        }
     }
 }

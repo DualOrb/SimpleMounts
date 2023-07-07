@@ -32,52 +32,59 @@ public class RenameMount implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if(!(sender instanceof Player)) return false;
         if(!(sender.hasPermission("SimpleMounts.rename"))) return false;
+        Player player = (Player)sender;
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         if(args.length != 1) {errorManager.error("Must provide a name",(Player)sender); return true;}
 
-        Player player = (Player)sender;
+        try {
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            Entity e = entityManager.getSummonedMount(player);
 
-        Entity e = entityManager.getSummonedMount(player);
+            if(e == null) {errorManager.error("Must first summon a mount",player);return true;}
 
-        if(e == null) {errorManager.error("Must first summon a mount",player);return true;}
+            //Check for nametag in hand
+            if(!player.getInventory().getItemInMainHand().getType().equals(Material.NAME_TAG)) {errorManager.error("Must be holding a name tag!",player); return true;}
 
-        //Check for nametag in hand
-        if(!player.getInventory().getItemInMainHand().getType().equals(Material.NAME_TAG)) {errorManager.error("Must be holding a name tag!",player); return true;}
+            ArrayList<Mount> mounts = entityManager.getMounts(player);
 
-        ArrayList<Mount> mounts = entityManager.getMounts(player);
-
-        String name = "";
-        if(args != null) {
-            name = implode(" ", args[0]);
-            name = name.replace("&", "§");
-            name = name.replace("_", " ");
-        }
-
-        //Validate Name chosen
-        if(name.length() > 25) {errorManager.error("Name is too long",player);return true;}
-        ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
-
-        //check profanity
-        if(SimpleMounts.getMountConfig().getBoolean("basic.profanity-filtered")) {
-            String profanity = chatManager.validateName(name);
-            if(profanity != null) {
-                errorManager.error("Profanity Detected",player);
-                errorManager.log(player.getName() + " tried to rename a horse with profanity : " + profanity + " | Name: " + name + "If this was an error, please contact Nicksarmor");
-                return true;}
-        }
-
-        for(Mount m: mounts) {
-            if(m.isSummoned()) {
-                e.setCustomName(name);
-                e.setCustomNameVisible(true);
-                player.getInventory().removeItem(new ItemStack(Material.NAME_TAG,1));   //remove x1 nametage
-                player.playSound(player, Sound.ITEM_BOOK_PAGE_TURN,2.5f,2.5f);
-                chatManager.sendPlayerMessage("Successfully Renamed Mount",player);
-                return true;
+            String name = "";
+            if(args != null) {
+                name = implode(" ", args[0]);
+                name = name.replace("&", "§");
+                name = name.replace("_", " ");
             }
+
+            //Validate Name chosen
+            if(name.length() > 25) {errorManager.error("Name is too long",player);return true;}
+            ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
+
+            //check profanity
+            if(SimpleMounts.getMountConfig().getBoolean("basic.profanity-filtered")) {
+                String profanity = chatManager.validateName(name);
+                if(profanity != null) {
+                    errorManager.error("Profanity Detected",player);
+                    errorManager.log(player.getName() + " tried to rename a horse with profanity : " + profanity + " | Name: " + name + "If this was an error, please contact Nicksarmor");
+                    return true;}
+            }
+
+            for(Mount m: mounts) {
+                if(m.isSummoned()) {
+                    e.setCustomName(name);
+                    e.setCustomNameVisible(true);
+                    player.getInventory().removeItem(new ItemStack(Material.NAME_TAG,1));   //remove x1 nametage
+                    player.playSound(player, Sound.ITEM_BOOK_PAGE_TURN,2.5f,2.5f);
+                    chatManager.sendPlayerMessage("Successfully Renamed Mount",player);
+                    return true;
+                }
+            }
+        } catch (Throwable e) {
+            errorManager.error("Unable to rename mount",player,e);
+
+            return false;
         }
+        errorManager.error("Mount not found",player);
+
 
         return false;
     }

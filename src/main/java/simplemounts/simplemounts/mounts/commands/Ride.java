@@ -31,25 +31,30 @@ public class Ride implements CommandExecutor {
 
         Player player = (Player) sender;
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
-        Entity entity = entityManager.getSummonedMount(player);
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
-        if(entity == null) {errorManager.error("Must have a mount summoned", player); return true;}
+        try {
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            Entity entity = entityManager.getSummonedMount(player);
 
-        ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        entity.teleport(player.getLocation());
+            if(entity == null) {errorManager.error("Must have a mount summoned", player); return true;}
 
-        cm.sendPlayerMessage("Yeehawwwwww",player);
+            ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
-        Bukkit.getScheduler().runTaskLater(SimpleMounts.getPlugin(), new Runnable() {
-            @Override
-            public void run() {
-                entity.addPassenger(player);
-            }
-        },3L);
+            entity.teleport(player.getLocation());
 
+            cm.sendPlayerMessage("Yeehawwwwww",player);
+
+            Bukkit.getScheduler().runTaskLater(SimpleMounts.getPlugin(), new Runnable() {
+                @Override
+                public void run() {
+                    entity.addPassenger(player);
+                }
+            },3L);
+        } catch (Throwable e) {
+            errorManager.error("Unable to ride mount",player,e);
+        }
 
         return true;
     }

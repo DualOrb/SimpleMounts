@@ -28,15 +28,21 @@ public class Trust implements CommandExecutor {
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         Player player = (Player)sender;
 
-        if(args.length != 1) {errorManager.error("Invalid number of arguments",player);return true;}
+        try {
+            if(args.length != 1) {errorManager.error("Invalid number of arguments",player);return true;}
 
-        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
-        if(entityManager.isSummoned(player)) {errorManager.error("Must have a mount summoned"); return true;}
+            if(entityManager.isSummoned(player)) {errorManager.error("Must have a mount summoned"); return true;}
 
-        if(Bukkit.getPlayer(args[0]) == null) {errorManager.error("Player to be trusted must be online");return true;}
+            if(Bukkit.getPlayer(args[0]) == null) {errorManager.error("Player to be trusted must be online");return true;}
 
-        entityManager.addTrustedPlayer(player, Bukkit.getPlayer(args[0]));
+            entityManager.addTrustedPlayer(player, Bukkit.getPlayer(args[0]));
+        } catch (Throwable e) {
+            errorManager.error("Failed to trust player",player,e);
+        }
+
+
 
         return true;
     }
