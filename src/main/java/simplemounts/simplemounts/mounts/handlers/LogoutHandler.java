@@ -23,6 +23,8 @@ public class LogoutHandler implements Listener {
         try {
             EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
             entityManager.storeSummonedMount(player);
+            errorManager.log( "Logout: unloaded " + player.getName() + "'s mount");
+
         } catch (Throwable e) {
             errorManager.error("Player Logout - Internal Failure",player,e);
         }

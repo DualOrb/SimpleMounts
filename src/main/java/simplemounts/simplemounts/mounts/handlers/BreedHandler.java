@@ -53,6 +53,7 @@ public class BreedHandler implements Listener {
             horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.speed-modifier"));
             horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).setBaseValue(horse.getAttribute(Attribute.HORSE_JUMP_STRENGTH).getValue() / SimpleMounts.getMountConfig().getDouble("attributes.jump-modifier"));
 
+            errorManager.log(player.getName() + " bred their horses ");
         } catch (Throwable e) {
             errorManager.error("Breed Handler - Internal Failure", player,e);
         }

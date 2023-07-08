@@ -94,7 +94,7 @@ public class ErrorManager {
 
     private void writeToLogFile(Log log) {
         try {
-            Files.writeString(systemLogPath, log.toString(), CREATE, APPEND);
+            Files.writeString(errorLogPath, log.toString(), CREATE, APPEND);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

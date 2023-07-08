@@ -21,7 +21,7 @@ public class OpenMounts implements CommandExecutor {
         if(!(sender.hasPermission("SimpleMounts.OpenMounts.self"))) {return false;}
 
         Player player = (Player) sender;
-
+        ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         try {
             player.playSound(player.getLocation(), Sound.BLOCK_BARREL_CLOSE, 2.5F,2.5F);
             if(args.length != 0) {
@@ -31,15 +31,14 @@ public class OpenMounts implements CommandExecutor {
                 Player player2 = Bukkit.getPlayer(args[0]);
 
                 new MountsPage(player2,player);  //Will need to change to sending player vs target
-                return true;
 
             } else {
                 new MountsPage(player,player);
-                return true;
-            }
 
+            }
+            return true;
         } catch (Throwable e) {
-            ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+
             errorManager.error("Failed to Open Mount Menu", player,e);
             return false;
         }

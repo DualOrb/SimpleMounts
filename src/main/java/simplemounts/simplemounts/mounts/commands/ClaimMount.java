@@ -99,7 +99,7 @@ public class ClaimMount implements CommandExecutor {
 
             effectManager.mountClaimEffect(player);
 
-
+            errorManager.log(player.getName() + " claimed mount " + json);
         } catch (Throwable e) {
             errorManager.error("Failed to claim mount", player,e);
         }

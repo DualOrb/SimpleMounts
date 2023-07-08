@@ -66,6 +66,7 @@ public class Release implements CommandExecutor {
             Vector vector = new Vector(Math.sin(pitch) * Math.cos(yaw), Math.cos(pitch), Math.sin(pitch) * Math.sin(yaw));
 
             h.setVelocity(vector);
+            errorManager.log(player.getName() + " released their mount ");
         } catch (Throwable e) {
             errorManager.error("Failed to release mount", player,e);
         }

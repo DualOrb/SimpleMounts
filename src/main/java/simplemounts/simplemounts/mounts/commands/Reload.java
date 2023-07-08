@@ -31,6 +31,7 @@ public class Reload implements CommandExecutor {
         } catch (Throwable e) {
             errorManager.error("Failed to reload config from file",e);
         }
+        errorManager.log("Reloaded Config");
         return true;
 
     }

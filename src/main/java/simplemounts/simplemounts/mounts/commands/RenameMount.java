@@ -75,9 +75,11 @@ public class RenameMount implements CommandExecutor {
                     player.getInventory().removeItem(new ItemStack(Material.NAME_TAG,1));   //remove x1 nametage
                     player.playSound(player, Sound.ITEM_BOOK_PAGE_TURN,2.5f,2.5f);
                     chatManager.sendPlayerMessage("Successfully Renamed Mount",player);
+                    errorManager.log(player.getName() + " renamed their mount: " + name);
                     return true;
                 }
             }
+
         } catch (Throwable e) {
             errorManager.error("Unable to rename mount",player,e);
 

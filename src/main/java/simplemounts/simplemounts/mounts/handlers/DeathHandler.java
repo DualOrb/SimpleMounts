@@ -60,8 +60,10 @@ public class DeathHandler implements Listener {
 
             if(event.getEntity().getKiller() instanceof Player) {
                 chatManager.sendPlayerMessage("Your mount has been slain by " + event.getEntity().getKiller().getName() + "!",player);
+                errorManager.log(player.getName() + "'s mount was slain by " + event.getEntity().getKiller().getName());
             } else {
                 chatManager.sendPlayerMessage("Your mount has died!",player);
+                errorManager.log(player.getName() + "'s mount has died ");
             }
 
         } catch (Throwable e) {

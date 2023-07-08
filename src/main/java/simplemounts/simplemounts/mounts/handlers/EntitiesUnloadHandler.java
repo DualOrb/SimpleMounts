@@ -52,7 +52,9 @@ public class EntitiesUnloadHandler implements Listener {
                 Player player = (Player)horse.getOwner();
 
                 entityManager.storeSummonedMount(player,horse);
+                errorManager.log( "Unloaded " + player.getName() + "'s mount");
             }
+
         } catch (Throwable e) {
             errorManager.error("Entities Unload Handler - Internal Failure", e);
         }
