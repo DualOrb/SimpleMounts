@@ -103,6 +103,7 @@ public final class SimpleMounts extends JavaPlugin {
         new PortalHandler(this);
         new EntitiesUnloadHandler(this);
         new DismountHandler(this);
+        new TeleportHandler(this);
 
         new DistanceListener(this);
         //new ChunkUnloadHandler(this);

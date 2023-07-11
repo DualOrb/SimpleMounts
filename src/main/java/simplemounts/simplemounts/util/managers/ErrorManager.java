@@ -43,6 +43,11 @@ public class ErrorManager {
         writeToLogFile("LOG]" + msg);
     }
 
+    public void logAction(String action, Player player) {
+        String sysMessage = "PLAYER " + player.getName() + "] " + action;
+        writeToLogFile(sysMessage);
+    }
+
     //System level logs
     public void error(String msg) {
         writeToLogFile("SYSTEM]" + msg);
@@ -58,9 +63,9 @@ public class ErrorManager {
         String sysMessage = "PLAYER " + player.getName() + "] " + msg;
         player.sendMessage(ChatColor.RED + msg);
         player.playSound(player, Sound.ENTITY_GHAST_SCREAM,1.0f,1.0f);
-        Bukkit.getLogger().info(sysMessage);
+        //Bukkit.getLogger().info(sysMessage);
 
-        writeToLogFile(sysMessage);
+        //writeToLogFile(sysMessage);
     }
 
     /**

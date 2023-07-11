@@ -39,7 +39,7 @@ public class SummonHandler implements Listener {
             if(!action.equals(Action.RIGHT_CLICK_AIR)) return;
 
             if(player.hasCooldown(Material.GOAT_HORN)) return;
-            
+
             if(!(player.hasPermission("SimpleMounts.can-whistle"))) {errorManager.error("Sorry, you haven't learned how to whistle yet", player);return;}
 
             player.setCooldown(Material.GOAT_HORN, 100);

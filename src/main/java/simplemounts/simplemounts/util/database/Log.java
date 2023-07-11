@@ -34,7 +34,7 @@ public class Log {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
         s += "*" + dtf.format(now) + " | " + PLUGIN_NAME + " | " + source + " | \n";
-        s += msg;
+        s += msg + "\n";
         for(int i = 0; i < SIZE; i++) s += "*";
         s += "\nException Msg\n";
 

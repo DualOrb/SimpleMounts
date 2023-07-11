@@ -151,6 +151,11 @@ public class EntityManager {
         if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
 
         AbstractHorse e = (AbstractHorse) Bukkit.getEntity(summonedMounts.get(player).getEntityId());
+        if(e == null) {
+            //Some sort of error may have happened. Attempt to fix
+            summonedMounts.remove(player);
+            return;
+        }
         UUID uuid = summonedMounts.get(player).getMountId();
         updateSummonTag(player,e,false);
         database.updateMount(player,uuid,"horse_data",serializeHorse(e));
@@ -176,8 +181,8 @@ public class EntityManager {
      * @param player
      */
     public void storeSummonedMount(Player player, AbstractHorse e) {
-        if(summonedMounts.isEmpty()) {errorManager.error("No mounts to store!",player);return;}
-        if(!summonedMounts.containsKey(player)) {errorManager.error("No mounts to store!",player);return;}
+        if(summonedMounts.isEmpty()) {return;}
+        if(!summonedMounts.containsKey(player)) {return;}
 
         UUID uuid = summonedMounts.get(player).getMountId();
         updateSummonTag(player,e,false);
@@ -206,6 +211,15 @@ public class EntityManager {
         } else {    //Removes tag from database
             database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"isSummoned",0);
             database.updateMount(player,(UUID)summonedMounts.get(player).getMountId(),"entity_id",null);
+        }
+
+    }
+    public void updateSummonTag(Player player, UUID uuid, boolean b) {
+        if(b) { //True, Should not be used
+            return;
+        } else {    //Removes tag from database
+            database.updateMount(player,uuid,"isSummoned",0);
+            database.updateMount(player,uuid,"entity_id",null);
         }
 
     }
@@ -246,6 +260,7 @@ public class EntityManager {
         for(Map.Entry<Player, Mount> entry : summonedMounts.entrySet()) {
             Player player = entry.getKey();
             AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
+            if(horse == null) continue;
             horse.remove();
             updateSummonTag(player,horse,false);
         }
@@ -271,6 +286,7 @@ public class EntityManager {
             Player player = entry.getKey();
 
             AbstractHorse horse = (AbstractHorse)Bukkit.getEntity(entry.getValue().getEntityId());
+            if(horse == null) continue;
 
             if(horse.getEntityId() == h1.getEntityId()) return player;
         }

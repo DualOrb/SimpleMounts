@@ -13,8 +13,9 @@ basic:
   leash-enabled: false
   leash-range: 20
 
+  #Recommended settings
   ride-when-summoned: true
-  store-on-dismount: false
+  store-on-dismount: true
 
 #To do with models / texture pack stuff
 texture-pack:

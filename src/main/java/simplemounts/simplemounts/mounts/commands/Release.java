@@ -33,10 +33,11 @@ public class Release implements CommandExecutor {
 
         Player player = (Player) sender;
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
         try {
             ChatManager chatManager = ServiceLocator.getLocator().getService(ChatManager.class);
-            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
 
             if(!entityManager.isSummoned(player)) {
                 errorManager.error("Must first have a summoned mount", player);
@@ -69,6 +70,7 @@ public class Release implements CommandExecutor {
             errorManager.log(player.getName() + " released their mount ");
         } catch (Throwable e) {
             errorManager.error("Failed to release mount", player,e);
+            entityManager.storeSummonedMount(player);
         }
 
         return true;

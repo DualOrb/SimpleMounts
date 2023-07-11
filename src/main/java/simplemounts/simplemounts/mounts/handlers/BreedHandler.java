@@ -26,6 +26,8 @@ public class BreedHandler implements Listener {
         Player player = (Player)event.getBreeder();
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
 
+        if(!(event.getFather() instanceof Horse) || !(event.getMother() instanceof Horse)) return;
+
         try {
             Horse father = (Horse)event.getFather();
             Horse mother = (Horse)event.getMother();

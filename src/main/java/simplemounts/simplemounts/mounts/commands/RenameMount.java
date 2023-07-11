@@ -35,9 +35,9 @@ public class RenameMount implements CommandExecutor {
         Player player = (Player)sender;
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
         if(args.length != 1) {errorManager.error("Must provide a name",(Player)sender); return true;}
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
         try {
-            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
             Entity e = entityManager.getSummonedMount(player);
 
@@ -82,6 +82,7 @@ public class RenameMount implements CommandExecutor {
 
         } catch (Throwable e) {
             errorManager.error("Unable to rename mount",player,e);
+            entityManager.storeSummonedMount(player);
 
             return false;
         }

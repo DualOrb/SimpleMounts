@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.AbstractHorse;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,6 +14,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import simplemounts.simplemounts.SimpleMounts;
+import simplemounts.simplemounts.mounts.gui.MountsPage;
 import simplemounts.simplemounts.util.database.Database;
 import simplemounts.simplemounts.util.database.Mount;
 import simplemounts.simplemounts.util.managers.ChatManager;
@@ -21,6 +23,7 @@ import simplemounts.simplemounts.util.managers.ErrorManager;
 import simplemounts.simplemounts.util.services.ServiceLocator;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class GUIHandler implements Listener {
 
@@ -86,7 +89,9 @@ public class GUIHandler implements Listener {
             }
             ChatManager cm = ServiceLocator.getLocator().getService(ChatManager.class);
 
-            em.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
+            AbstractHorse h = em.spawnHorse(mounts.get(clicked),(Player)event.getWhoClicked());
+
+            final UUID mountId = mounts.get(clicked).getMountId();
 
             if(mounts.get(clicked).getHorseData().get("name") == null) {
                 cm.sendPlayerMessage( "Summoned horse", (Player)event.getWhoClicked());
@@ -95,6 +100,19 @@ public class GUIHandler implements Listener {
                 cm.sendPlayerMessage( "Summoned " + mounts.get(clicked).getHorseData().get("name"), (Player)event.getWhoClicked());
 
             }
+
+            Bukkit.getScheduler().runTaskLater(SimpleMounts.getPlugin(), new Runnable() {
+                @Override
+                public void run() {
+                    //Check to ensure the mount is summoned properly - Not blocked by worldguard or others
+                    Entity e = em.getSummonedMount(player);
+                    if(e == null) { //
+                        errorManager.error("Unable to summon mount at this location", player);
+                        em.unCacheHorse(player);
+                        em.updateSummonTag(player,mountId,false);
+                    }
+                }
+            },3L);
 
             event.setCancelled(true);
 

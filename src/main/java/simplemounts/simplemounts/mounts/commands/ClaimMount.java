@@ -37,6 +37,8 @@ public class ClaimMount implements CommandExecutor {
         if(!(sender.hasPermission("SimpleMounts.ClaimMounts"))) {return true;}
 
         Player player = (Player) sender;
+
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
         try {
 
 
@@ -69,7 +71,7 @@ public class ClaimMount implements CommandExecutor {
                 return true;
             }
 
-            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
+
 
             ArrayList<Mount> mounts = entityManager.getMounts(player);
 
@@ -102,6 +104,7 @@ public class ClaimMount implements CommandExecutor {
             errorManager.log(player.getName() + " claimed mount " + json);
         } catch (Throwable e) {
             errorManager.error("Failed to claim mount", player,e);
+            entityManager.storeSummonedMount(player);
         }
 
         return true;

@@ -32,9 +32,9 @@ public class Ride implements CommandExecutor {
         Player player = (Player) sender;
 
         ErrorManager errorManager = ServiceLocator.getLocator().getService(ErrorManager.class);
+        EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
 
         try {
-            EntityManager entityManager = ServiceLocator.getLocator().getService(EntityManager.class);
             Entity entity = entityManager.getSummonedMount(player);
 
 
@@ -54,6 +54,7 @@ public class Ride implements CommandExecutor {
             },3L);
         } catch (Throwable e) {
             errorManager.error("Unable to ride mount",player,e);
+            entityManager.storeSummonedMount(player);
         }
 
         return true;
