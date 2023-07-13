@@ -7,6 +7,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.managers.ChatManager;
@@ -44,6 +46,13 @@ public class Release implements CommandExecutor {
                 return true;
             }
             AbstractHorse h = (AbstractHorse)entityManager.getSummonedMount(player);
+
+            //Clear potion effects
+            for(PotionEffect potionEffect: h.getActivePotionEffects()) {
+                PotionEffectType potionEffectType = potionEffect.getType();
+
+                h.removePotionEffect(potionEffectType);
+            }
 
             //Correcting to vanilla spawns
             h.setPersistent(true);

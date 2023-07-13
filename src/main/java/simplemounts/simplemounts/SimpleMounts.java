@@ -6,6 +6,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.Potion;
 import simplemounts.simplemounts.mounts.handlers.*;
 import simplemounts.simplemounts.mounts.recipes.WhistleRecipe;
 import simplemounts.simplemounts.mounts.commands.*;

@@ -8,6 +8,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.*;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.json.simple.JSONObject;
 import simplemounts.simplemounts.SimpleMounts;
 import simplemounts.simplemounts.util.database.Mount;
@@ -83,6 +85,13 @@ public class ClaimMount implements CommandExecutor {
 
             if(entityManager.getOwningPlayer(horse) != null) {
                 if(entityManager.getOwningPlayer(horse).equals(player)) {errorManager.error("You have already claimed this mount",player);return true;}
+            }
+
+            //Clear potion effects
+            for(PotionEffect potionEffect: horse.getActivePotionEffects()) {
+                PotionEffectType potionEffectType = potionEffect.getType();
+
+                horse.removePotionEffect(potionEffectType);
             }
 
             //Now that all tests are done, apply the attribute modifiers

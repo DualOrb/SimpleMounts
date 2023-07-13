@@ -156,6 +156,14 @@ public class EntityManager {
             summonedMounts.remove(player);
             return;
         }
+
+        //Clear potion effects
+        for(PotionEffect potionEffect: e.getActivePotionEffects()) {
+            PotionEffectType potionEffectType = potionEffect.getType();
+
+            e.removePotionEffect(potionEffectType);
+        }
+
         UUID uuid = summonedMounts.get(player).getMountId();
         updateSummonTag(player,e,false);
         database.updateMount(player,uuid,"horse_data",serializeHorse(e));
@@ -184,7 +192,15 @@ public class EntityManager {
         if(summonedMounts.isEmpty()) {return;}
         if(!summonedMounts.containsKey(player)) {return;}
 
+        //Clear potion effects
+        for(PotionEffect potionEffect: e.getActivePotionEffects()) {
+            PotionEffectType potionEffectType = potionEffect.getType();
+
+            e.removePotionEffect(potionEffectType);
+        }
+
         UUID uuid = summonedMounts.get(player).getMountId();
+
         updateSummonTag(player,e,false);
         database.updateMount(player,uuid,"horse_data",serializeHorse(e));
 
