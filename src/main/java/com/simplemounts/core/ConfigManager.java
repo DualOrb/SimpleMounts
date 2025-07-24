@@ -34,6 +34,7 @@ public class ConfigManager {
     
     private void validateConfig() {
         try {
+            // Validate basic settings
             if (config.getInt("limits.default_max_mounts", 5) < 1) {
                 plugin.getLogger().warning("default_max_mounts must be at least 1, setting to 5");
                 config.set("limits.default_max_mounts", 5);
@@ -49,10 +50,86 @@ public class ConfigManager {
                 config.set("limits.min_name_length", 3);
             }
             
+            // Validate message keys
+            validateMessageKeys();
+            
+            // Validate distance storage settings
+            int maxDistance = config.getInt("storage.distance_storage.max_distance", 32);
+            if (maxDistance < 1 || maxDistance > 64) {
+                plugin.getLogger().warning("distance_storage.max_distance must be between 1 and 64, setting to 32");
+                config.set("storage.distance_storage.max_distance", 32);
+            }
+            
+            int checkInterval = config.getInt("storage.distance_storage.check_interval", 100);
+            if (checkInterval < 20) {
+                plugin.getLogger().warning("distance_storage.check_interval must be at least 20 ticks (1 second), setting to 100");
+                config.set("storage.distance_storage.check_interval", 100);
+            }
+            
+            int gracePeriod = config.getInt("storage.distance_storage.grace_period", 10);
+            if (gracePeriod < 1) {
+                plugin.getLogger().warning("distance_storage.grace_period must be at least 1 second, setting to 10");
+                config.set("storage.distance_storage.grace_period", 10);
+            }
+            
             plugin.saveConfig();
             
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Error validating configuration", e);
+        }
+    }
+    
+    private void validateMessageKeys() {
+        try {
+            // List of required message keys
+            String[] requiredKeys = {
+                "prefix",
+                // Core messages
+                "mount_stored", "mount_summoned", "mount_claimed", "mount_released", "mount_renamed",
+                "config_reloaded", "mount_claimed_and_stored",
+                // Error messages
+                "mount_not_found", "mount_summon_failed", "mount_store_failed", "mount_release_failed",
+                "mount_spawn_failed", "mount_claim_failed", "mount_rename_failed",
+                // Validation messages
+                "invalid_mount_type", "mount_type_disabled", "invalid_mount_name", "mount_name_exists",
+                "mount_limit_reached", "type_limit_reached", "already_riding", "not_riding_mount",
+                "not_your_mount", "no_safe_location", "no_permission",
+                // Taming messages
+                "entity_protected", "taming_failed", "wrong_taming_item", "require_empty_hand",
+                // Protection messages
+                "mount_protected", "mount_died",
+                // Distance storage messages
+                "mount_too_far_warning", "mount_auto_stored_distance",
+                // System messages
+                "shutdown_storage",
+                // Usage messages
+                "player_only_command", "usage_summon", "usage_store", "usage_release", "usage_info",
+                "usage_rename", "usage_give", "usage_debug",
+                // List messages
+                "no_stored_mounts", "stored_mounts_header", "mount_list_total", "mount_info_header",
+                "commands_header",
+                // Status indicators
+                "mount_has_chest", "mount_is_active", "mount_last_used", "mount_info_name",
+                "mount_info_type", "mount_info_created", "mount_info_last_used", "mount_has_chest_yes",
+                "mount_has_chest_no", "mount_status_active", "mount_status_stored",
+                // Help messages
+                "help_summon", "help_store", "help_list", "help_release", "help_info", "help_rename",
+                "help_reload", "help_help", "help_give", "help_debug"
+            };
+            
+            List<String> missingKeys = new ArrayList<>();
+            for (String key : requiredKeys) {
+                if (!config.contains("messages." + key)) {
+                    missingKeys.add(key);
+                }
+            }
+            
+            if (!missingKeys.isEmpty()) {
+                plugin.getLogger().warning("Missing message keys in config: " + String.join(", ", missingKeys));
+                plugin.getLogger().warning("Plugin may not function properly. Please update your config.yml");
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Error validating message keys", e);
         }
     }
     
@@ -248,6 +325,23 @@ public class ConfigManager {
         return config.getInt("storage.shutdown_storage_timeout", 30);
     }
     
+    public boolean autoResummonOnLogin() {
+        return config.getBoolean("storage.auto_resummon_on_login", false);
+    }
+    
+    public int getDistanceStorageMaxDistance() {
+        int distance = config.getInt("storage.distance_storage.max_distance", 32);
+        return Math.min(Math.max(distance, 1), 64); // Ensure between 1 and 64
+    }
+    
+    public int getDistanceStorageCheckInterval() {
+        return Math.max(config.getInt("storage.distance_storage.check_interval", 100), 20); // At least 1 second
+    }
+    
+    public int getDistanceStorageGracePeriod() {
+        return Math.max(config.getInt("storage.distance_storage.grace_period", 10), 1); // At least 1 second
+    }
+    
     public boolean preventMountStealing() {
         return config.getBoolean("mount_behavior.prevent_mount_stealing", true);
     }
@@ -353,7 +447,48 @@ public class ConfigManager {
     }
     
     public String getMessage(String key) {
-        return config.getString("messages." + key, "Message not found: " + key);
+        try {
+            String message = config.getString("messages." + key);
+            if (message != null && !message.trim().isEmpty()) {
+                return message;
+            }
+            
+            // Fallback messages for critical keys
+            String fallback = getFallbackMessage(key);
+            if (fallback != null) {
+                plugin.getLogger().warning("Using fallback message for missing key: " + key);
+                return fallback;
+            }
+            
+            plugin.getLogger().warning("Message key not found and no fallback available: " + key);
+            return "&cMessage not found: " + key;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error getting message for key '" + key + "': " + e.getMessage());
+            return "&cError loading message: " + key;
+        }
+    }
+    
+    private String getFallbackMessage(String key) {
+        // Essential fallback messages to prevent plugin breaking
+        switch (key) {
+            case "prefix": return "&8[&6SimpleMounts&8] ";
+            case "mount_stored": return "&aMount '{name}' has been stored!";
+            case "mount_summoned": return "&aMount '{name}' has been summoned!";
+            case "mount_not_found": return "&cMount '{name}' not found!";
+            case "no_permission": return "&cYou don't have permission to do that!";
+            case "mount_summon_failed": return "&cFailed to summon mount. Please try again.";
+            case "mount_store_failed": return "&cFailed to store mount. Please try again.";
+            case "mount_claim_failed": return "&cFailed to perform mount operation. Please try again.";
+            case "player_only_command": return "&cThis command can only be used by players.";
+            case "usage_summon": return "&cUsage: /mount summon <name>";
+            case "usage_store": return "&cUsage: /mount store [name]";
+            case "usage_release": return "&cUsage: /mount release <name>";
+            case "usage_info": return "&cUsage: /mount info <name>";
+            case "no_stored_mounts": return "&7You don't have any stored mounts.";
+            case "stored_mounts_header": return "&6Your Stored Mounts:";
+            case "commands_header": return "&6SimpleMounts Commands:";
+            default: return null;
+        }
     }
     
     public boolean isDebugEnabled() {

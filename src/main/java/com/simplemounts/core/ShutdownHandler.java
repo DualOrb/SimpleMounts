@@ -118,7 +118,7 @@ public class ShutdownHandler {
             
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 try {
-                    plugin.getMountManager().storeAllPlayerMounts(player);
+                    plugin.getMountManager().storeAllPlayerMountsSync(player);
                     totalStored++;
                     
                     if (plugin.getConfigManager().logShutdownOperations()) {
@@ -143,8 +143,8 @@ public class ShutdownHandler {
         
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             try {
-                // Store mounts synchronously
-                plugin.getMountManager().storeAllPlayerMounts(player);
+                // Store mounts synchronously to ensure they're saved before shutdown
+                plugin.getMountManager().storeAllPlayerMountsSync(player);
                 totalStored++;
                 
                 if (plugin.getConfigManager().logShutdownOperations()) {

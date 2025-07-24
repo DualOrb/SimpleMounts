@@ -43,18 +43,23 @@ public class PlayerListener implements Listener {
         });
     }
     
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         
+        // Store mounts IMMEDIATELY before chunks unload - run synchronously
+        if (plugin.getConfigManager().autoStoreOnLogout()) {
+            try {
+                mountManager.storeAllPlayerMountsSync(player);
+                plugin.getLogger().info("Stored mounts for " + player.getName() + " during logout");
+            } catch (Exception e) {
+                plugin.getLogger().severe("Failed to store mounts for " + player.getName() + " during logout: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
         // Clean up any active GUI sessions to prevent memory leaks
         plugin.getGUIManager().closeSession(player);
-        
-        if (plugin.getConfigManager().autoStoreOnLogout()) {
-            plugin.runAsync(() -> {
-                mountManager.storeAllPlayerMounts(player);
-            });
-        }
     }
     
     @EventHandler(priority = EventPriority.MONITOR)

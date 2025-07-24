@@ -24,6 +24,7 @@ public class MountManager {
     
     private final Map<UUID, Set<UUID>> playerActiveMounts;
     private final Map<UUID, String> entityMountNames;
+    private final Map<UUID, Long> mountDistanceWarningTime;
     
     public MountManager(SimpleMounts plugin) {
         this.plugin = plugin;
@@ -33,14 +34,82 @@ public class MountManager {
         
         this.playerActiveMounts = new ConcurrentHashMap<>();
         this.entityMountNames = new ConcurrentHashMap<>();
+        this.mountDistanceWarningTime = new ConcurrentHashMap<>();
         
         startCleanupTask();
+        startDistanceMonitoring();
     }
     
     private void startCleanupTask() {
         plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             database.cleanupOrphanedMounts();
         }, 6000L, 6000L); // Run every 5 minutes
+    }
+    
+    private void startDistanceMonitoring() {
+        int checkInterval = config.getDistanceStorageCheckInterval();
+        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            checkMountDistances();
+        }, checkInterval, checkInterval);
+    }
+    
+    private void checkMountDistances() {
+        int maxDistance = config.getDistanceStorageMaxDistance();
+        long gracePeriodMs = config.getDistanceStorageGracePeriod() * 1000L;
+        long currentTime = System.currentTimeMillis();
+        
+        for (Map.Entry<UUID, Set<UUID>> entry : playerActiveMounts.entrySet()) {
+            UUID playerUuid = entry.getKey();
+            org.bukkit.entity.Player player = plugin.getServer().getPlayer(playerUuid);
+            
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+            
+            Set<UUID> mountUuids = new HashSet<>(entry.getValue()); // Copy to avoid concurrent modification
+            for (UUID mountUuid : mountUuids) {
+                Entity mountEntity = plugin.getServer().getEntity(mountUuid);
+                if (mountEntity == null) {
+                    continue;
+                }
+                
+                // Skip if player is riding this mount
+                if (player.getVehicle() != null && player.getVehicle().getUniqueId().equals(mountUuid)) {
+                    mountDistanceWarningTime.remove(mountUuid);
+                    continue;
+                }
+                
+                double distance = player.getLocation().distance(mountEntity.getLocation());
+                if (distance > maxDistance) {
+                    Long warningStartTime = mountDistanceWarningTime.get(mountUuid);
+                    if (warningStartTime == null) {
+                        // First time mount is too far - start grace period
+                        mountDistanceWarningTime.put(mountUuid, currentTime);
+                        String mountName = entityMountNames.get(mountUuid);
+                        sendMessage(player, "mount_too_far_warning", mountName, String.valueOf(config.getDistanceStorageGracePeriod()));
+                    } else if (currentTime - warningStartTime >= gracePeriodMs) {
+                        // Grace period expired - store the mount
+                        String mountName = entityMountNames.get(mountUuid);
+                        plugin.getLogger().info("Auto-storing mount '" + mountName + "' for player " + player.getName() + " due to distance (" + String.format("%.1f", distance) + " > " + maxDistance + " blocks)");
+                        
+                        plugin.runAsync(() -> {
+                            storeMount(player, mountName).thenAccept(stored -> {
+                                if (stored) {
+                                    plugin.runSync(() -> {
+                                        sendMessage(player, "mount_auto_stored_distance", mountName);
+                                    });
+                                }
+                            });
+                        });
+                        
+                        mountDistanceWarningTime.remove(mountUuid);
+                    }
+                } else {
+                    // Mount is within range - clear any warning
+                    mountDistanceWarningTime.remove(mountUuid);
+                }
+            }
+        }
     }
     
     public CompletableFuture<Boolean> claimMount(Player player, Entity entity, String mountName) {
@@ -475,6 +544,99 @@ public class MountManager {
         }
     }
     
+    public void storeAllPlayerMountsSync(Player player) {
+        Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
+        if (activeMounts == null || activeMounts.isEmpty()) {
+            plugin.getLogger().info("DEBUG: No active mounts found for " + player.getName());
+            return;
+        }
+        
+        plugin.getLogger().info("DEBUG: Found " + activeMounts.size() + " active mounts for " + player.getName());
+        
+        // Keep track of chunks to ensure they stay loaded during storage
+        Set<org.bukkit.Chunk> chunksToKeepLoaded = new HashSet<>();
+        
+        for (UUID entityUuid : new HashSet<>(activeMounts)) {
+            Entity entity = plugin.getServer().getEntity(entityUuid);
+            if (entity != null) {
+                // Force chunk to stay loaded during storage
+                org.bukkit.Chunk chunk = entity.getLocation().getChunk();
+                if (!chunk.isLoaded()) {
+                    chunk.load();
+                }
+                chunksToKeepLoaded.add(chunk);
+                chunk.setForceLoaded(true);
+                
+                String mountName = entityMountNames.get(entityUuid);
+                if (mountName != null) {
+                    plugin.getLogger().info("DEBUG: Storing mount " + mountName + " for " + player.getName() + " at " + entity.getLocation());
+                    
+                    try {
+                        // Store mount synchronously
+                        boolean stored = storeMountSync(player, entity, mountName);
+                        if (stored) {
+                            plugin.getLogger().info("DEBUG: Successfully stored mount " + mountName);
+                        } else {
+                            plugin.getLogger().warning("DEBUG: Failed to store mount " + mountName);
+                        }
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("DEBUG: Error storing mount " + mountName + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    plugin.getLogger().warning("DEBUG: Mount name not found for entity " + entityUuid);
+                }
+            } else {
+                plugin.getLogger().warning("DEBUG: Entity not found for UUID " + entityUuid + " - may have already been unloaded");
+            }
+        }
+        
+        // Allow chunks to unload after a delay
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            for (org.bukkit.Chunk chunk : chunksToKeepLoaded) {
+                chunk.setForceLoaded(false);
+            }
+        }, 20L); // 1 second delay
+    }
+    
+    private boolean storeMountSync(Player player, Entity entity, String mountName) {
+        try {
+            MountType mountType = MountType.fromEntityType(entity.getType());
+            MountAttributes attributes = MountAttributes.fromEntity(entity);
+            String mountDataYaml = serializer.serializeAttributes(attributes);
+            String chestInventoryData = null;
+            
+            if (mountType.canHaveChest() && entity instanceof InventoryHolder) {
+                chestInventoryData = serializer.serializeChestInventory(((InventoryHolder) entity).getInventory());
+            }
+            
+            // Perform database operation synchronously (this might block but it's necessary during logout)
+            boolean saved = database.saveMountData(
+                player.getUniqueId(),
+                mountName,
+                mountType.name(),
+                mountDataYaml,
+                chestInventoryData
+            ).get(); // .get() makes it synchronous
+            
+            if (saved) {
+                untrackActiveMount(player, entity);
+                
+                // Play storing effects and remove entity
+                playStoringEffects(entity.getLocation(), player);
+                entity.remove();
+                
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error in storeMountSync", e);
+            return false;
+        }
+    }
+    
     private boolean canPlayerClaimMoreMounts(Player player, MountType mountType) {
         try {
             int currentCount = database.getPlayerMountCount(player.getUniqueId()).get();
@@ -699,6 +861,7 @@ public class MountManager {
             if (replacements.length > 1) {
                 message = message.replace("{limit}", replacements[1]);
                 message = message.replace("{max}", replacements[1]);
+                message = message.replace("{grace}", replacements[1]);
                 if (replacements.length > 2) {
                     message = message.replace("{type}", replacements[2]);
                 }

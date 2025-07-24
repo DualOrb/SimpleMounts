@@ -31,21 +31,23 @@ public class MountCommand implements CommandExecutor, TabCompleter {
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
-            return true;
-        }
-        
-        Player player = (Player) sender;
-        
-        if (args.length == 0) {
-            showHelp(player);
-            return true;
-        }
-        
-        String subcommand = args[0].toLowerCase();
-        
-        switch (subcommand) {
+        try {
+            if (!(sender instanceof Player)) {
+                String message = plugin.getConfigManager().getMessage("player_only_command");
+                sender.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                return true;
+            }
+            
+            Player player = (Player) sender;
+            
+            if (args.length == 0) {
+                showHelp(player);
+                return true;
+            }
+            
+            String subcommand = args[0].toLowerCase();
+            
+            switch (subcommand) {
             case "summon":
                 handleSummon(player, args);
                 break;
@@ -80,102 +82,237 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             default:
                 showHelp(player);
                 break;
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in MountCommand.onCommand: " + e.getMessage());
+            e.printStackTrace();
+            if (sender instanceof Player) {
+                sendMessage((Player) sender, "mount_claim_failed");
+            }
         }
         
         return true;
     }
     
+    private void sendMessage(Player player, String key) {
+        sendMessage(player, key, new HashMap<>());
+    }
+    
+    private void sendMessage(Player player, String key, Map<String, String> placeholders) {
+        try {
+            String message = plugin.getConfigManager().getMessage(key);
+            String prefix = plugin.getConfigManager().getMessagePrefix();
+            
+            // Replace placeholders
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                message = message.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + message));
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to send message with key '" + key + "' to player " + player.getName());
+            player.sendMessage(ChatColor.RED + "An error occurred. Please try again.");
+        }
+    }
+    
     private void handleSummon(Player player, String[] args) {
-        if (!player.hasPermission("simplemounts.summon")) {
-            sendMessage(player, "no_permission");
-            return;
+        try {
+            if (!player.hasPermission("simplemounts.summon")) {
+                sendMessage(player, "no_permission");
+                return;
+            }
+            
+            if (args.length < 2) {
+                sendMessage(player, "usage_summon");
+                return;
+            }
+            
+            String mountName = args[1];
+            
+            plugin.runAsync(() -> {
+                try {
+                    mountManager.summonMount(player, mountName);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Error summoning mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
+                    e.printStackTrace();
+                    plugin.runSync(() -> {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("name", mountName);
+                        sendMessage(player, "mount_summon_failed", placeholders);
+                    });
+                }
+            });
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in handleSummon: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_summon_failed");
         }
-        
-        if (args.length < 2) {
-            sendMessage(player, "Usage: /mount summon <name>");
-            return;
-        }
-        
-        String mountName = args[1];
-        
-        plugin.runAsync(() -> {
-            mountManager.summonMount(player, mountName);
-        });
     }
     
     private void handleStore(Player player, String[] args) {
-        if (!player.hasPermission("simplemounts.store")) {
-            sendMessage(player, "no_permission");
-            return;
-        }
-        
-        if (args.length > 1) {
-            // Store specific mount by name
-            String mountName = args[1];
-            plugin.runAsync(() -> {
-                mountManager.storeMount(player, mountName);
-            });
-        } else {
-            // Store currently ridden mount
-            plugin.runAsync(() -> {
-                mountManager.storeCurrentMount(player);
-            });
+        try {
+            if (!player.hasPermission("simplemounts.store")) {
+                sendMessage(player, "no_permission");
+                return;
+            }
+            
+            if (args.length > 1) {
+                // Store specific mount by name
+                String mountName = args[1];
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.storeMount(player, mountName);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error storing mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                        plugin.runSync(() -> sendMessage(player, "mount_store_failed"));
+                    }
+                });
+            } else {
+                // Store currently ridden mount
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.storeCurrentMount(player);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error storing current mount for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                        plugin.runSync(() -> sendMessage(player, "mount_store_failed"));
+                    }
+                });
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in handleStore: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_store_failed");
         }
     }
     
     private void handleList(Player player, String[] args) {
-        if (!player.hasPermission("simplemounts.list")) {
-            sendMessage(player, "no_permission");
-            return;
-        }
-        
-        plugin.runAsync(() -> {
-            mountManager.getPlayerMounts(player).thenAccept(mounts -> {
-                plugin.runSync(() -> {
-                    displayMountList(player, mounts);
-                });
+        try {
+            if (!player.hasPermission("simplemounts.list")) {
+                sendMessage(player, "no_permission");
+                return;
+            }
+            
+            plugin.runAsync(() -> {
+                try {
+                    mountManager.getPlayerMounts(player).thenAccept(mounts -> {
+                        plugin.runSync(() -> {
+                            try {
+                                displayMountList(player, mounts);
+                            } catch (Exception e) {
+                                plugin.getLogger().severe("Error displaying mount list for player " + player.getName() + ": " + e.getMessage());
+                                e.printStackTrace();
+                                sendMessage(player, "mount_claim_failed");
+                            }
+                        });
+                    }).exceptionally(ex -> {
+                        plugin.getLogger().severe("Error getting mounts for player " + player.getName() + ": " + ex.getMessage());
+                        ex.printStackTrace();
+                        plugin.runSync(() -> sendMessage(player, "mount_claim_failed"));
+                        return null;
+                    });
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Error in async mount list operation: " + e.getMessage());
+                    e.printStackTrace();
+                    plugin.runSync(() -> sendMessage(player, "mount_claim_failed"));
+                }
             });
-        });
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in handleList: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_claim_failed");
+        }
     }
     
     private void handleRelease(Player player, String[] args) {
-        if (!player.hasPermission("simplemounts.release")) {
-            sendMessage(player, "no_permission");
-            return;
+        try {
+            if (!player.hasPermission("simplemounts.release")) {
+                sendMessage(player, "no_permission");
+                return;
+            }
+            
+            if (args.length < 2) {
+                sendMessage(player, "usage_release");
+                return;
+            }
+            
+            String mountName = args[1];
+            
+            plugin.runAsync(() -> {
+                try {
+                    mountManager.releaseMount(player, mountName);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Error releasing mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
+                    e.printStackTrace();
+                    plugin.runSync(() -> {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("name", mountName);
+                        sendMessage(player, "mount_release_failed", placeholders);
+                    });
+                }
+            });
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in handleRelease: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_release_failed");
         }
-        
-        if (args.length < 2) {
-            sendMessage(player, "Usage: /mount release <name>");
-            return;
-        }
-        
-        String mountName = args[1];
-        
-        plugin.runAsync(() -> {
-            mountManager.releaseMount(player, mountName);
-        });
     }
     
     private void handleInfo(Player player, String[] args) {
-        if (!player.hasPermission("simplemounts.info")) {
-            sendMessage(player, "no_permission");
-            return;
-        }
-        
-        if (args.length < 2) {
-            sendMessage(player, "Usage: /mount info <name>");
-            return;
-        }
-        
-        String mountName = args[1];
-        
-        plugin.runAsync(() -> {
-            mountManager.getMountData(player, mountName).thenAccept(mountData -> {
-                plugin.runSync(() -> {
-                    displayMountInfo(player, mountData);
-                });
+        try {
+            if (!player.hasPermission("simplemounts.info")) {
+                sendMessage(player, "no_permission");
+                return;
+            }
+            
+            if (args.length < 2) {
+                sendMessage(player, "usage_info");
+                return;
+            }
+            
+            String mountName = args[1];
+            
+            plugin.runAsync(() -> {
+                try {
+                    mountManager.getMountData(player, mountName).thenAccept(mountData -> {
+                        plugin.runSync(() -> {
+                            try {
+                                displayMountInfo(player, mountData);
+                            } catch (Exception e) {
+                                plugin.getLogger().severe("Error displaying mount info for '" + mountName + "' to player " + player.getName() + ": " + e.getMessage());
+                                e.printStackTrace();
+                                Map<String, String> placeholders = new HashMap<>();
+                                placeholders.put("name", mountName);
+                                sendMessage(player, "mount_not_found", placeholders);
+                            }
+                        });
+                    }).exceptionally(ex -> {
+                        plugin.getLogger().severe("Error getting mount data for '" + mountName + "' for player " + player.getName() + ": " + ex.getMessage());
+                        ex.printStackTrace();
+                        plugin.runSync(() -> {
+                            Map<String, String> placeholders = new HashMap<>();
+                            placeholders.put("name", mountName);
+                            sendMessage(player, "mount_not_found", placeholders);
+                        });
+                        return null;
+                    });
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Error in async mount info operation: " + e.getMessage());
+                    e.printStackTrace();
+                    plugin.runSync(() -> {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("name", mountName);
+                        sendMessage(player, "mount_not_found", placeholders);
+                    });
+                }
             });
-        });
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in handleInfo: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_claim_failed");
+        }
     }
     
     private void handleRename(Player player, String[] args) {
@@ -261,116 +398,167 @@ public class MountCommand implements CommandExecutor, TabCompleter {
     }
     
     private void displayMountList(Player player, List<MountData> mounts) {
-        String prefix = plugin.getConfigManager().getMessagePrefix();
-        
-        if (mounts.isEmpty()) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                prefix + "&7You don't have any stored mounts."));
-            return;
-        }
-        
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            prefix + "&6Your Stored Mounts:"));
-        
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm");
-        
-        for (MountData mount : mounts) {
-            MountType type = mount.getMountTypeEnum();
-            String typeName = type.getDisplayName();
-            String lastAccessed = dateFormat.format(new Date(mount.getLastAccessed()));
+        try {
+            if (mounts.isEmpty()) {
+                sendMessage(player, "no_stored_mounts");
+                return;
+            }
             
-            String chestInfo = mount.hasChestInventory() ? " &7[Chest]" : "";
-            String activeInfo = isActiveMount(player, mount.getMountName()) ? " &a[Active]" : "";
+            sendMessage(player, "stored_mounts_header");
             
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7- &e" + mount.getMountName() + " &7(" + typeName + ")" + chestInfo + activeInfo));
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "  &7Last used: " + lastAccessed));
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm");
+            
+            for (MountData mount : mounts) {
+                try {
+                    MountType type = mount.getMountTypeEnum();
+                    String typeName = type.getDisplayName();
+                    String lastAccessed = dateFormat.format(new Date(mount.getLastAccessed()));
+                    
+                    String chestInfo = mount.hasChestInventory() ? 
+                        ChatColor.translateAlternateColorCodes('&', plugin.getConfigManager().getMessage("mount_has_chest")) : "";
+                    String activeInfo = isActiveMount(player, mount.getMountName()) ? 
+                        ChatColor.translateAlternateColorCodes('&', plugin.getConfigManager().getMessage("mount_is_active")) : "";
+                    
+                    String prefix = plugin.getConfigManager().getMessagePrefix();
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
+                        "&7- &e" + mount.getMountName() + " &7(" + typeName + ")" + chestInfo + activeInfo));
+                    
+                    String lastUsedMsg = ChatColor.translateAlternateColorCodes('&', 
+                        plugin.getConfigManager().getMessage("mount_last_used")) + lastAccessed;
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', "  " + lastUsedMsg));
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Error displaying mount: " + mount.getMountName() + " - " + e.getMessage());
+                }
+            }
+            
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("count", String.valueOf(mounts.size()));
+            sendMessage(player, "mount_list_total", placeholders);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in displayMountList: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_claim_failed");
         }
-        
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            prefix + "&7Total: &e" + mounts.size() + " &7mounts"));
     }
     
     private void displayMountInfo(Player player, MountData mountData) {
-        String prefix = plugin.getConfigManager().getMessagePrefix();
-        
-        if (mountData == null) {
-            sendMessage(player, "mount_not_found");
-            return;
-        }
-        
-        MountType type = mountData.getMountTypeEnum();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm");
-        
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            prefix + "&6Mount Information:"));
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            "&7Name: &e" + mountData.getMountName()));
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            "&7Type: &e" + type.getDisplayName()));
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            "&7Created: &e" + dateFormat.format(new Date(mountData.getCreatedAt()))));
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            "&7Last Used: &e" + dateFormat.format(new Date(mountData.getLastAccessed()))));
-        
-        if (mountData.hasChestInventory()) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7Chest: &aYes"));
-        }
-        
-        if (isActiveMount(player, mountData.getMountName())) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7Status: &aCurrently Active"));
-        } else {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7Status: &7Stored"));
+        try {
+            if (mountData == null) {
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("name", "unknown");
+                sendMessage(player, "mount_not_found", placeholders);
+                return;
+            }
+            
+            MountType type = mountData.getMountTypeEnum();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm");
+            
+            sendMessage(player, "mount_info_header");
+            
+            String nameMsg = ChatColor.translateAlternateColorCodes('&', 
+                plugin.getConfigManager().getMessage("mount_info_name")) + mountData.getMountName();
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', nameMsg));
+            
+            String typeMsg = ChatColor.translateAlternateColorCodes('&', 
+                plugin.getConfigManager().getMessage("mount_info_type")) + type.getDisplayName();
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', typeMsg));
+            
+            String createdMsg = ChatColor.translateAlternateColorCodes('&', 
+                plugin.getConfigManager().getMessage("mount_info_created")) + dateFormat.format(new Date(mountData.getCreatedAt()));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', createdMsg));
+            
+            String lastUsedMsg = ChatColor.translateAlternateColorCodes('&', 
+                plugin.getConfigManager().getMessage("mount_info_last_used")) + dateFormat.format(new Date(mountData.getLastAccessed()));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', lastUsedMsg));
+            
+            if (mountData.hasChestInventory()) {
+                String chestMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("mount_has_chest_yes"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', chestMsg));
+            } else {
+                String chestMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("mount_has_chest_no"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', chestMsg));
+            }
+            
+            if (isActiveMount(player, mountData.getMountName())) {
+                String statusMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("mount_status_active"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', statusMsg));
+            } else {
+                String statusMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("mount_status_stored"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', statusMsg));
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in displayMountInfo: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_claim_failed");
         }
     }
     
     private void showHelp(Player player) {
-        String prefix = plugin.getConfigManager().getMessagePrefix();
-        
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            prefix + "&6SimpleMounts Commands:"));
-        
-        if (player.hasPermission("simplemounts.summon")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount summon <name> &f- Summon a stored mount"));
+        try {
+            sendMessage(player, "commands_header");
+            
+            if (player.hasPermission("simplemounts.summon")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_summon"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.store")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_store"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.list")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_list"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.release")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_release"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.info")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_info"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.rename")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_rename"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+            }
+            
+            if (player.hasPermission("simplemounts.admin")) {
+                String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_reload"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+                
+                String giveMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_give"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', giveMsg));
+                
+                String debugMsg = ChatColor.translateAlternateColorCodes('&', 
+                    plugin.getConfigManager().getMessage("help_debug"));
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', debugMsg));
+            }
+            
+            String helpMsg = ChatColor.translateAlternateColorCodes('&', 
+                plugin.getConfigManager().getMessage("help_help"));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', helpMsg));
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error in showHelp: " + e.getMessage());
+            e.printStackTrace();
+            sendMessage(player, "mount_claim_failed");
         }
-        
-        if (player.hasPermission("simplemounts.store")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount store [name] &f- Store your current mount"));
-        }
-        
-        if (player.hasPermission("simplemounts.list")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount list &f- List all your stored mounts"));
-        }
-        
-        if (player.hasPermission("simplemounts.release")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount release <name> &f- Permanently delete a mount"));
-        }
-        
-        if (player.hasPermission("simplemounts.info")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount info <name> &f- Show detailed mount information"));
-        }
-        
-        if (player.hasPermission("simplemounts.rename")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount rename <old> <new> &f- Rename a mount"));
-        }
-        
-        if (player.hasPermission("simplemounts.admin")) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-                "&7/mount reload &f- Reload the configuration"));
-        }
-        
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&', 
-            "&7/mount help &f- Show this help message"));
     }
     
     private boolean isActiveMount(Player player, String mountName) {
@@ -452,7 +640,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         
         if (args.length < 2) {
             player.sendMessage(ChatColor.YELLOW + "Usage: /mount give <item>");
-            player.sendMessage(ChatColor.YELLOW + "Available items: default, horse, strider, camel, donkey, mule, pig, llama");
+            player.sendMessage(ChatColor.YELLOW + "Available items: default, horse, donkey, mule, camel, strider, pig, llama");
             return;
         }
         

@@ -34,6 +34,20 @@ taming:
       custom_model_data: 100001
       consume_on_use: true
       
+    DONKEY:
+      material: "CARROT"
+      name: "&6Donkey Taming Carrot"
+      lore:
+        - "&7Donkeys love carrots!"
+      consume_on_use: true
+      
+    MULE:
+      material: "SUGAR"
+      name: "&7Mule Taming Sugar"
+      lore:
+        - "&7Sweet treat for mules!"
+      consume_on_use: true
+      
     STRIDER:
       material: "WARPED_FUNGUS"
       name: "&dStrider Taming Fungus"
@@ -46,6 +60,20 @@ taming:
       name: "&aCamel Taming Cactus"
       lore:
         - "&7A desert delicacy!"
+      consume_on_use: true
+      
+    PIG:
+      material: "CARROT_ON_A_STICK"
+      name: "&dPig Control Stick"
+      lore:
+        - "&7Use this to control pigs!"
+      consume_on_use: false
+      
+    LLAMA:
+      material: "HAY_BLOCK"
+      name: "&eLlama Taming Hay"
+      lore:
+        - "&7Llamas love hay blocks!"
       consume_on_use: true
   
   # Taming settings
@@ -166,6 +194,16 @@ storage:
   auto_store_on_shutdown: true
   # Maximum time to wait for storage during shutdown (seconds)
   shutdown_storage_timeout: 30
+  # Auto-resummon mounts on player login
+  auto_resummon_on_login: false
+  # Distance-based auto storage (always enabled)
+  distance_storage:
+    # Maximum distance before storing mount (max 64 blocks)
+    max_distance: 32
+    # Check interval in ticks (20 ticks = 1 second)
+    check_interval: 100
+    # Grace period before storing (seconds)
+    grace_period: 10
 
 mount_behavior:
   # Prevent other players from riding stored mounts
@@ -259,32 +297,162 @@ inventory:
 
 messages:
   prefix: "&8[&6SimpleMounts&8] "
+  
+  # Core Command Messages
   mount_stored: "&aMount '{name}' has been stored!"
   mount_summoned: "&aMount '{name}' has been summoned!"
   mount_claimed: "&aYou have successfully claimed '{name}'!"
-  mount_limit_reached: "&cYou have reached your mount limit of {limit}!"
-  mount_not_found: "&cMount '{name}' not found!"
-  no_safe_location: "&cCould not find a safe location to summon your mount!"
-  already_riding: "&cYou are already riding a mount!"
+  mount_claimed_and_stored: "&aYou have successfully claimed and stored '{name}'!"
   mount_released: "&aMount '{name}' has been released!"
+  mount_renamed: "&aMount '{old_name}' has been renamed to '{new_name}'!"
+  config_reloaded: "&aConfiguration has been reloaded!"
+  
+  # Error Messages
+  mount_not_found: "&cMount '{name}' not found!"
+  mount_summon_failed: "&cFailed to summon mount '{name}'. Please try again."
+  mount_store_failed: "&cFailed to store mount. Please try again."
+  mount_release_failed: "&cFailed to release mount '{name}'. Please try again."
+  mount_spawn_failed: "&cFailed to spawn mount. Please try again."
+  mount_claim_failed: "&cFailed to claim mount. Please try again."
+  mount_rename_failed: "&cFailed to rename mount. Please try again."
+  
+  # Validation Messages
   invalid_mount_type: "&cThat entity type cannot be stored as a mount!"
   mount_type_disabled: "&cThat mount type is currently disabled!"
-  type_limit_reached: "&cYou have reached your limit for {type} mounts!"
-  taming_failed: "&cTaming failed! The animal rejected your offering."
-  wrong_taming_item: "&cThis animal requires a different taming item!"
-  mount_protected: "&cThis mount belongs to another player!"
-  entity_protected: "&cThis entity is protected and cannot be tamed!"
-  shutdown_storage: "&eStoring all mounts due to server shutdown..."
   invalid_mount_name: "&cInvalid mount name! Must be between {min} and {max} characters."
   mount_name_exists: "&cYou already have a mount named '{name}'!"
-  no_permission: "&cYou don't have permission to do that!"
-  not_riding_mount: "&cYou are not currently riding a mount!"
-  mount_store_failed: "&cFailed to store mount. Please try again."
-  not_your_mount: "&cThis mount doesn't belong to you!"
-  mount_spawn_failed: "&cFailed to spawn mount. Please try again."
-  mount_summon_failed: "&cFailed to summon mount. Please try again."
+  mount_limit_reached: "&cYou have reached your mount limit of {limit}!"
+  type_limit_reached: "&cYou have reached your limit for {type} mounts!"
   already_riding: "&cYou are already riding a mount!"
-  mount_claimed_and_stored: "&aYou have successfully claimed and stored '{name}'!"
+  not_riding_mount: "&cYou are not currently riding a mount!"
+  not_your_mount: "&cThis mount doesn't belong to you!"
+  no_safe_location: "&cCould not find a safe location to summon your mount!"
+  no_permission: "&cYou don't have permission to do that!"
+  
+  # Taming System Messages
+  entity_protected: "&cThis entity is protected and cannot be tamed!"
+  taming_failed: "&cTaming failed! The animal rejected your offering."
+  wrong_taming_item: "&cThis animal requires a different taming item!"
+  require_empty_hand: "&cYou need an empty off-hand to tame this mount!"
+  
+  # Mount Protection Messages
+  mount_protected: "&cThis mount belongs to another player!"
+  mount_died: "&cYour mount '{name}' has died!"
+  
+  # Distance Storage Messages
+  mount_too_far_warning: "&eYour mount '{name}' is too far away! It will be auto-stored in {grace} seconds if you don't get closer."
+  mount_auto_stored_distance: "&6Your mount '{name}' was automatically stored because it was too far away."
+  
+  # System Messages
+  shutdown_storage: "&eStoring all mounts due to server shutdown..."
+  
+  # Command Usage Messages
+  player_only_command: "&cThis command can only be used by players."
+  usage_summon: "&cUsage: /mount summon <name>"
+  usage_store: "&cUsage: /mount store [name]"
+  usage_release: "&cUsage: /mount release <name>"
+  usage_info: "&cUsage: /mount info <name>"
+  usage_rename: "&cUsage: /mount rename <old_name> <new_name>"
+  usage_give: "&cUsage: /mount give <item_type>"
+  usage_debug: "&cUsage: /mount debug <command>"
+  
+  # Mount List Messages
+  no_stored_mounts: "&7You don't have any stored mounts."
+  stored_mounts_header: "&6Your Stored Mounts:"
+  mount_list_total: "&7Total: &e{count} &7mounts"
+  mount_info_header: "&6Mount Information:"
+  commands_header: "&6SimpleMounts Commands:"
+  
+  # Mount Status Indicators
+  mount_has_chest: "&7[Chest]"
+  mount_is_active: "&a[Active]"
+  mount_last_used: "&7Last used: "
+  mount_info_name: "&7Name: &e"
+  mount_info_type: "&7Type: &e"
+  mount_info_created: "&7Created: &e"
+  mount_info_last_used: "&7Last Used: &e"
+  mount_has_chest_yes: "&7Chest: &aYes"
+  mount_has_chest_no: "&7Chest: &7No"
+  mount_status_active: "&7Status: &aCurrently Active"
+  mount_status_stored: "&7Status: &7Stored"
+  
+  # Command Help Messages
+  help_summon: "&7/mount summon <name> &f- Summon a stored mount"
+  help_store: "&7/mount store [name] &f- Store your current mount"
+  help_list: "&7/mount list &f- List all your stored mounts"
+  help_release: "&7/mount release <name> &f- Permanently delete a mount"
+  help_info: "&7/mount info <name> &f- Show detailed mount information"
+  help_rename: "&7/mount rename <old> <new> &f- Rename a mount"
+  help_reload: "&7/mount reload &f- Reload the configuration"
+  help_help: "&7/mount help &f- Show this help message"
+  help_give: "&7/mount give <item> &f- Give taming items (admin)"
+  help_debug: "&7/mount debug <cmd> &f- Debug commands (admin)"
+  
+  # Admin Messages
+  admin_no_permission: "&cYou don't have permission to use admin commands."
+  give_available_items: "&7Available items: default, horse, donkey, mule, camel, strider, pig, llama"
+  unknown_item_type: "&cUnknown taming item type: {type}"
+  item_given: "&aGiven you a {type} taming item!"
+  debug_no_permission: "&cYou don't have permission to use debug commands."
+  debug_commands_header: "&6Debug commands:"
+  debug_gui_help: "&7/mount debug gui &f- Check GUI sessions"
+  debug_cleargui_help: "&7/mount debug cleargui [player] &f- Clear GUI session"
+  gui_sessions_count: "&7Active GUI sessions: &e{count}"
+  gui_session_cleared_other: "&aCleared GUI session for {player}."
+  player_not_found: "&cPlayer not found: {player}"
+  gui_session_cleared_self: "&aCleared your GUI session."
+  unknown_debug_command: "&cUnknown debug command: {command}"
+  
+  # GUI System Messages
+  mount_switched: "&aSwitched to mount: {name}"
+  rename_prompt: "&ePlease type the new name for your mount in chat:"
+  rename_cancel_instruction: "&7Type 'cancel' to cancel the rename."
+  rename_cancelled: "&7Rename cancelled."
+  name_length_invalid: "&cMount name must be between 3 and 16 characters long."
+  name_characters_invalid: "&cMount name can only contain letters, numbers, and underscores."
+  mount_name_duplicate: "&cA mount with the name '{name}' already exists!"
+  mount_renamed_success: "&aMount renamed from '{old_name}' to '{new_name}'!"
+  mount_rename_failed_generic: "&cFailed to rename mount. Please try again."
+  mount_rename_error: "&cAn error occurred while renaming the mount."
+  
+  # GUI Navigation and Display
+  gui_previous_page: "Previous Page"
+  gui_next_page: "Next Page"
+  gui_no_mounts_title: "No Mounts Found"
+  gui_no_mounts_description: "You don't have any stored mounts yet."
+  gui_no_mounts_instruction_1: "Use custom taming items on rideable"
+  gui_no_mounts_instruction_2: "entities to claim them as mounts!"
+  gui_page_info: "Page Info"
+  gui_player_mounts_suffix: "'s Mounts"
+  gui_click_instruction: "Click mounts to summon/store"
+  gui_hover_instruction: "Hover over mounts for details"
+  gui_active_limit_rule: "✦ Only one mount active at a time"
+  
+  # GUI Mount Stats
+  gui_mount_type: "Type: "
+  gui_mount_status: "Status: "
+  gui_status_active: "Active"
+  gui_status_stored: "Stored"
+  gui_health_stat: "Health: "
+  gui_speed_stat: "Speed: "
+  gui_jump_stat: "Jump: "
+  gui_action_store: "» Click to Store"
+  gui_action_summon: "» Click to Summon"
+  
+  # GUI Buttons
+  gui_back_to_list: "Back to Mount List"
+  gui_close: "Close"
+  gui_refresh: "Refresh"
+  gui_summon_mount: "Summon Mount"
+  gui_store_mount: "Store Mount"
+  gui_rename_mount: "Rename Mount"
+  gui_release_mount: "Release Mount"
+  gui_confirm: "Confirm"
+  gui_cancel: "Cancel"
+  
+  # GUI Warnings
+  gui_warning_permanent: "WARNING: This cannot be undone!"
+  gui_mount_not_found: "Mount Not Found"
   
 # Enable debug logging
 debug: false

@@ -49,7 +49,6 @@ public class MountAttributes {
             
             // Serialize ItemStacks properly instead of storing them directly
             if (horse.getInventory().getSaddle() != null) {
-                System.out.println("DEBUG: Storing saddle: " + horse.getInventory().getSaddle().getType());
                 attributes.setItemStack("saddle", horse.getInventory().getSaddle());
             }
             
@@ -58,7 +57,6 @@ public class MountAttributes {
                 attributes.set("color", h.getColor().name());
                 attributes.set("style", h.getStyle().name());
                 if (h.getInventory().getArmor() != null) {
-                    System.out.println("DEBUG: Storing armor: " + h.getInventory().getArmor().getType());
                     attributes.setItemStack("armor", h.getInventory().getArmor());
                 }
             }
@@ -66,11 +64,15 @@ public class MountAttributes {
             if (horse instanceof ChestedHorse) {
                 ChestedHorse chested = (ChestedHorse) horse;
                 attributes.set("carryingChest", chested.isCarryingChest());
+                
                 if (chested instanceof Llama) {
                     Llama llama = (Llama) chested;
                     attributes.set("strength", llama.getStrength());
-                    // Note: getCarpetColor() may not be available in all Spigot versions
-                    // attributes.set("carpetColor", llama.getCarpetColor() != null ? llama.getCarpetColor().name() : null);
+                    
+                    // Store carpet as ItemStack from inventory
+                    if (llama.getInventory().getDecor() != null) {
+                        attributes.setItemStack("carpet", llama.getInventory().getDecor());
+                    }
                 }
             }
         }
@@ -84,7 +86,15 @@ public class MountAttributes {
         if (entity instanceof Strider) {
             Strider strider = (Strider) entity;
             attributes.set("shivering", strider.isShivering());
-            // attributes.set("saddled", strider.isSaddled()); // May not be available
+            // Check if strider has a saddle - use reflection to support different Spigot versions
+            try {
+                java.lang.reflect.Method isSaddledMethod = strider.getClass().getMethod("isSaddled");
+                boolean saddled = (Boolean) isSaddledMethod.invoke(strider);
+                attributes.set("saddled", saddled);
+            } catch (Exception e) {
+                // Method not available in this Spigot version, ignore
+                attributes.set("saddled", false);
+            }
         }
         
         if (entity instanceof Pig) {
@@ -113,8 +123,6 @@ public class MountAttributes {
     }
     
     public void applyToEntity(Entity entity) {
-        System.out.println("DEBUG: applyToEntity called for " + entity.getType() + ", attributes keys: " + attributes.keySet());
-        
         if (entity instanceof LivingEntity) {
             LivingEntity living = (LivingEntity) entity;
             
@@ -160,7 +168,6 @@ public class MountAttributes {
             
             if (has("saddle")) {
                 ItemStack saddle = getItemStack("saddle");
-                System.out.println("DEBUG: Restoring saddle: " + (saddle != null ? saddle.getType() : "null"));
                 if (saddle != null) {
                     horse.getInventory().setSaddle(saddle);
                 }
@@ -177,15 +184,11 @@ public class MountAttributes {
                     h.setStyle(Horse.Style.valueOf(getString("style")));
                 }
                 
-                System.out.println("DEBUG: Checking for armor - has('armor'): " + has("armor") + ", has('armor_serialized'): " + has("armor_serialized"));
                 if (has("armor")) {
                     ItemStack armor = getItemStack("armor");
-                    System.out.println("DEBUG: Restoring armor: " + (armor != null ? armor.getType() : "null"));
                     if (armor != null) {
                         h.getInventory().setArmor(armor);
                     }
-                } else {
-                    System.out.println("DEBUG: No armor key found in attributes");
                 }
             }
             
@@ -203,9 +206,13 @@ public class MountAttributes {
                         llama.setStrength(getInt("strength"));
                     }
                     
-                    // if (has("carpetColor")) {
-                    //     llama.setCarpetColor(org.bukkit.DyeColor.valueOf(getString("carpetColor")));
-                    // }
+                    // Restore carpet from ItemStack
+                    if (has("carpet")) {
+                        ItemStack carpet = getItemStack("carpet");
+                        if (carpet != null) {
+                            llama.getInventory().setDecor(carpet);
+                        }
+                    }
                 }
             }
         }
@@ -225,9 +232,15 @@ public class MountAttributes {
                 strider.setShivering(getBoolean("shivering"));
             }
             
-            // if (has("saddled")) {
-            //     strider.setSaddled(getBoolean("saddled"));
-            // }
+            // Restore saddled state - use reflection to support different Spigot versions
+            if (has("saddled")) {
+                try {
+                    java.lang.reflect.Method setSaddledMethod = strider.getClass().getMethod("setSaddled", boolean.class);
+                    setSaddledMethod.invoke(strider, getBoolean("saddled"));
+                } catch (Exception e) {
+                    // Method not available in this Spigot version, ignore
+                }
+            }
         }
         
         if (entity instanceof Pig) {
@@ -295,46 +308,35 @@ public class MountAttributes {
             return;
         }
         
-        System.out.println("DEBUG: setItemStack called for " + key + " with item " + item.getType() + ", serializer available: " + (inventorySerializer != null));
-        
         if (inventorySerializer != null) {
             try {
                 String serialized = inventorySerializer.serializeItemStack(item);
                 if (serialized != null) {
                     attributes.put(key + "_serialized", serialized);
-                    System.out.println("DEBUG: Successfully serialized " + key + " (" + item.getType() + ")");
                 } else {
-                    System.out.println("DEBUG: Serialization returned null for " + key + ", storing directly");
                     // Fallback to storing item directly if serialization fails
                     attributes.put(key, item);
                 }
             } catch (Exception e) {
-                System.out.println("DEBUG: Serialization failed for " + key + ": " + e.getMessage() + ", storing directly");
                 // Fallback to storing item directly if serialization fails
                 attributes.put(key, item);
             }
         } else {
-            System.out.println("DEBUG: No serializer available for " + key + ", storing directly");
             // If no serializer available, store directly (should not happen in normal operation)
             attributes.put(key, item);
         }
     }
     
     public ItemStack getItemStack(String key) {
-        System.out.println("DEBUG: getItemStack called for " + key);
-        
         // First try to get serialized version
         String serializedKey = key + "_serialized";
         if (attributes.containsKey(serializedKey) && inventorySerializer != null) {
             try {
                 String serialized = (String) attributes.get(serializedKey);
                 if (serialized != null) {
-                    ItemStack result = inventorySerializer.deserializeItemStack(serialized);
-                    System.out.println("DEBUG: Successfully deserialized " + key + ": " + (result != null ? result.getType() : "null"));
-                    return result;
+                    return inventorySerializer.deserializeItemStack(serialized);
                 }
             } catch (Exception e) {
-                System.out.println("DEBUG: Deserialization failed for " + key + ": " + e.getMessage());
                 // Fall through to direct retrieval
             }
         }
@@ -342,11 +344,9 @@ public class MountAttributes {
         // Fallback to direct ItemStack retrieval (for backwards compatibility)
         Object value = attributes.get(key);
         if (value instanceof ItemStack) {
-            System.out.println("DEBUG: Found direct ItemStack for " + key + ": " + ((ItemStack) value).getType());
             return (ItemStack) value;
         }
         
-        System.out.println("DEBUG: No ItemStack found for " + key + " (has serialized: " + attributes.containsKey(serializedKey) + ", has direct: " + attributes.containsKey(key) + ")");
         return null;
     }
     
@@ -355,11 +355,7 @@ public class MountAttributes {
     }
     
     public boolean has(String key) {
-        boolean result = attributes.containsKey(key) || attributes.containsKey(key + "_serialized");
-        if (key.equals("armor") || key.equals("saddle")) {
-            System.out.println("DEBUG: has('" + key + "') = " + result + " (direct: " + attributes.containsKey(key) + ", serialized: " + attributes.containsKey(key + "_serialized") + ")");
-        }
-        return result;
+        return attributes.containsKey(key) || attributes.containsKey(key + "_serialized");
     }
     
     public String getString(String key) {
