@@ -1,0 +1,106 @@
+name: SimpleMounts
+version: '1.0.0'
+main: com.simplemounts.SimpleMounts
+api-version: 1.21
+authors: [SimpleMounts Team]
+description: A Minecraft Spigot plugin for taming, storing, and summoning rideable entities
+website: https://github.com/simplemounts/SimpleMounts
+load: STARTUP
+depend: []
+softdepend: [Vault, WorldGuard, GriefPrevention, Towny, Factions, Lands, ClaimChunk, Citizens, MythicMobs, Essentials]
+
+commands:
+  mount:
+    description: Main SimpleMounts command
+    usage: /mount <subcommand> [args]
+    aliases: [sm, simplemounts]
+    permission: simplemounts.use
+  
+  sm:
+    description: Alias for SimpleMounts command
+    usage: /sm <subcommand> [args]
+    aliases: [mount, simplemounts]
+    permission: simplemounts.use
+  
+  simplemounts:
+    description: Full SimpleMounts command
+    usage: /simplemounts <subcommand> [args]
+    aliases: [mount, sm]
+    permission: simplemounts.use
+
+permissions:
+  simplemounts.*:
+    description: Gives access to all SimpleMounts features
+    children:
+      simplemounts.use: true
+      simplemounts.summon: true
+      simplemounts.store: true
+      simplemounts.claim: true
+      simplemounts.list: true
+      simplemounts.release: true
+      simplemounts.rename: true
+      simplemounts.info: true
+      simplemounts.admin: true
+      simplemounts.unlimited: true
+      simplemounts.bypass.protection: true
+    default: op
+  
+  simplemounts.use:
+    description: Basic mount usage permission
+    default: true
+  
+  simplemounts.summon:
+    description: Allows summoning stored mounts
+    default: true
+  
+  simplemounts.store:
+    description: Allows storing mounts
+    default: true
+  
+  simplemounts.claim:
+    description: Allows claiming wild mounts with taming items
+    default: true
+  
+  simplemounts.list:
+    description: Allows listing stored mounts
+    default: true
+  
+  simplemounts.release:
+    description: Allows releasing/deleting mounts
+    default: true
+  
+  simplemounts.rename:
+    description: Allows renaming mounts
+    default: true
+  
+  simplemounts.info:
+    description: Allows viewing detailed mount information
+    default: true
+  
+  simplemounts.admin:
+    description: Administrative commands and features
+    default: op
+  
+  simplemounts.unlimited:
+    description: No mount storage limit
+    default: false
+  
+  simplemounts.bypass.protection:
+    description: Bypass mount protection systems
+    default: op
+  
+  simplemounts.limit.10:
+    description: Allows storing up to 10 mounts
+    default: false
+  
+  simplemounts.limit.25:
+    description: Allows storing up to 25 mounts
+    default: false
+  
+  simplemounts.limit.50:
+    description: Allows storing up to 50 mounts
+    default: false
+  
+  simplemounts.limit.100:
+    description: Allows storing up to 100 mounts
+    default: false

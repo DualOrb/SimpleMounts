@@ -1,0 +1,280 @@
+# SimpleMounts Configuration
+
+database:
+  # Database file location (relative to plugin folder)
+  file: "mounts.db"
+  # Connection pool settings
+  max_connections: 10
+  connection_timeout: 30
+
+# Custom taming system
+taming:
+  # Enable custom taming (disables vanilla taming detection)
+  enable_custom_taming: true
+  
+  # Taming items configuration
+  taming_items:
+    # Default taming item for all mount types
+    default:
+      material: "GOLDEN_CARROT"
+      name: "&6Mount Taming Treat"
+      lore:
+        - "&7Right-click a rideable animal"
+        - "&7to claim it as your mount!"
+      custom_model_data: null
+      enchantments: []
+      consume_on_use: true
+      
+    # Type-specific taming items
+    HORSE:
+      material: "GOLDEN_APPLE"
+      name: "&eHorse Taming Apple"
+      lore:
+        - "&7Perfect for taming horses!"
+      custom_model_data: 100001
+      consume_on_use: true
+      
+    STRIDER:
+      material: "WARPED_FUNGUS"
+      name: "&dStrider Taming Fungus"
+      lore:
+        - "&7Irresistible to striders!"
+      consume_on_use: true
+      
+    CAMEL:
+      material: "CACTUS"
+      name: "&aCamel Taming Cactus"
+      lore:
+        - "&7A desert delicacy!"
+      consume_on_use: true
+  
+  # Taming settings
+  success_chance: 100  # Percentage chance of successful taming
+  require_empty_hand: false  # Require empty off-hand
+  play_effects: true  # Play particles and sounds on taming
+  
+  # Integration with other plugins
+  integration:
+    # Check if entity is protected by other plugins before taming
+    respect_protection_plugins: true
+    # List of plugins to check compatibility with
+    protection_plugins:
+      - "WorldGuard"
+      - "GriefPrevention"
+      - "Towny"
+      - "Factions"
+      - "Lands"
+      - "ClaimChunk"
+
+# Mount type configurations
+mount_types:
+  # Enable/disable specific mount types
+  enabled_types:
+    - HORSE
+    - DONKEY
+    - MULE
+    - CAMEL
+    - STRIDER
+    - PIG
+    - LLAMA
+    # Add any rideable entity type here
+  
+  # Type-specific settings
+  horse:
+    # Restore horse armor on summon
+    restore_armor: true
+    # Heal horse to full health on summon
+    heal_on_summon: true
+    # Allow vanilla taming alongside custom system
+    allow_vanilla_taming: false
+  
+  donkey:
+    restore_chest: true
+    heal_on_summon: true
+    allow_vanilla_taming: false
+  
+  mule:
+    restore_chest: true
+    heal_on_summon: true
+    allow_vanilla_taming: false
+  
+  camel:
+    # Restore camel decorations
+    restore_decorations: true
+    heal_on_summon: true
+    # Summon camel in sitting position
+    summon_sitting: false
+    allow_vanilla_taming: false
+  
+  strider:
+    # Keep strider warm when summoned in overworld
+    keep_warm_outside_nether: true
+    heal_on_summon: true
+    allow_vanilla_taming: false
+  
+  pig:
+    # Automatically equip carrot on stick when summoning
+    auto_equip_carrot: true
+    heal_on_summon: true
+    allow_vanilla_taming: false
+  
+  llama:
+    restore_chest: true
+    restore_decorations: true
+    heal_on_summon: true
+    # Maintain caravan connections when possible
+    preserve_caravan: false
+    allow_vanilla_taming: false
+
+limits:
+  # Default maximum mounts per player
+  default_max_mounts: 5
+  # Maximum mount name length
+  max_name_length: 16
+  # Minimum mount name length
+  min_name_length: 3
+  # Limit mounts by type (optional)
+  type_limits:
+    # Example: max 2 striders per player
+    # STRIDER: 2
+    # CAMEL: 1
+
+summoning:
+  # Search radius for safe summoning spots
+  safe_spot_radius: 10
+  # Maximum height difference for summoning
+  max_height_difference: 5
+  # Teleport mount to player if no safe spot found
+  teleport_if_no_safe_spot: true
+  # Remove existing mount when summoning new one
+  auto_dismiss_existing: true
+  # Check for lava safety when summoning striders
+  strider_lava_safety: true
+  # Summon striders in lava if available
+  strider_prefer_lava: true
+
+storage:
+  # Auto-store mounts on player logout
+  auto_store_on_logout: true
+  # Auto-store mounts on player death
+  auto_store_on_death: false
+  # Store mounts when changing worlds
+  auto_store_on_world_change: false
+  # Store mounts when changing dimensions
+  auto_store_on_dimension_change: true
+  # Auto-store all mounts on server shutdown
+  auto_store_on_shutdown: true
+  # Maximum time to wait for storage during shutdown (seconds)
+  shutdown_storage_timeout: 30
+
+mount_behavior:
+  # Prevent other players from riding stored mounts
+  prevent_mount_stealing: true
+  # Allow mounts to take damage
+  allow_mount_damage: true
+  # Heal mounts when summoned
+  heal_on_summon: true
+  # Restore mount inventory on summon
+  restore_inventory: true
+  # Keep mounts loaded even when owner is far away
+  keep_loaded: false
+  # Prevent mount interaction by non-owners
+  protect_mount_interaction: true
+  # Prevent chest access by non-owners
+  protect_chest_access: true
+
+# Server shutdown handling
+shutdown:
+  # Enable graceful shutdown handling
+  enable_shutdown_handler: true
+  # Force immediate storage without confirmation
+  force_immediate_storage: true
+  # Log shutdown storage operations
+  log_shutdown_operations: true
+
+# Plugin compatibility settings
+compatibility:
+  # Check for conflicting plugins on startup
+  check_conflicts_on_startup: true
+  
+  # Plugin-specific compatibility settings
+  plugins:
+    # Horses plugin compatibility
+    horses:
+      enabled: true
+      priority: "LOWEST"  # Event priority to avoid conflicts
+    
+    # MythicMobs compatibility
+    mythicmobs:
+      enabled: true
+      ignore_mythic_mobs: true  # Don't allow taming of MythicMobs
+    
+    # Citizens compatibility
+    citizens:
+      enabled: true
+      ignore_npcs: true  # Don't allow taming of NPC entities
+    
+    # EssentialsX compatibility
+    essentials:
+      enabled: true
+      respect_spawn_protection: true
+
+# Rideable entity detection settings
+rideable_detection:
+  # Automatically detect new rideable entities from updates
+  auto_detect_new_types: true
+  # Custom rideable entities (for modded servers)
+  custom_rideable_types: []
+    # Example for modded entities:
+    # - "MODDED_DRAGON"
+    # - "CUSTOM_MOUNT"
+
+# Inventory serialization settings
+inventory:
+  # Include NBT data in serialization
+  include_nbt_data: true
+  # Compress inventory data to save space
+  compress_data: true
+  # Maximum inventory slots to serialize per mount
+  max_slots: 27
+  # Handle nested inventories (shulker boxes, etc.)
+  handle_nested_inventories: true
+  # Custom item support
+  custom_items:
+    # Force NBT serialization for custom items (recommended)
+    force_nbt_for_custom: true
+    # Create placeholders for items that fail to deserialize
+    create_placeholders: true
+    # Validate custom item serialization before storing
+    validate_before_storing: true
+    # Supported custom item plugins
+    supported_plugins:
+      - "MMOItems"
+      - "ItemsAdder"
+      - "Oraxen"
+      - "EcoItems"
+      - "CustomItems"
+    # Log custom item serialization issues
+    log_custom_item_issues: true
+
+messages:
+  prefix: "&8[&6SimpleMounts&8] "
+  mount_stored: "&aMount '{name}' has been stored!"
+  mount_summoned: "&aMount '{name}' has been summoned!"
+  mount_claimed: "&aYou have successfully claimed '{name}'!"
+  mount_limit_reached: "&cYou have reached your mount limit of {limit}!"
+  mount_not_found: "&cMount '{name}' not found!"
+  no_safe_location: "&cCould not find a safe location to summon your mount!"
+  already_riding: "&cYou are already riding a mount!"
+  mount_released: "&aMount '{name}' has been released!"
+  invalid_mount_type: "&cThat entity type cannot be stored as a mount!"
+  mount_type_disabled: "&cThat mount type is currently disabled!"
+  type_limit_reached: "&cYou have reached your limit for {type} mounts!"
+  taming_failed: "&cTaming failed! The animal rejected your offering."
+  wrong_taming_item: "&cThis animal requires a different taming item!"
+  mount_protected: "&cThis mount belongs to another player!"
+  entity_protected: "&cThis entity is protected and cannot be tamed!"
+  shutdown_storage: "&eStoring all mounts due to server shutdown..."
+  
+# Enable debug logging
+debug: false
