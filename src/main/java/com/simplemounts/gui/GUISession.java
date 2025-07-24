@@ -7,7 +7,7 @@ public class GUISession {
     private final Player player;
     private final GUIManager.GUIType type;
     private final int page;
-    private String selectedMount;
+    private Integer selectedMountId;
     private String action;
     private long lastInteraction;
     
@@ -30,12 +30,12 @@ public class GUISession {
         return page;
     }
     
-    public String getSelectedMount() {
-        return selectedMount;
+    public Integer getSelectedMountId() {
+        return selectedMountId;
     }
     
-    public void setSelectedMount(String selectedMount) {
-        this.selectedMount = selectedMount;
+    public void setSelectedMountId(Integer selectedMountId) {
+        this.selectedMountId = selectedMountId;
         updateLastInteraction();
     }
     
@@ -66,7 +66,7 @@ public class GUISession {
                 "player=" + player.getName() +
                 ", type=" + type +
                 ", page=" + page +
-                ", selectedMount='" + selectedMount + '\'' +
+                ", selectedMountId=" + selectedMountId +
                 ", action='" + action + '\'' +
                 ", lastInteraction=" + lastInteraction +
                 '}';

@@ -52,22 +52,22 @@ public class GUIManager {
         mountGUI.open();
     }
     
-    public void openMountInfoGUI(Player player, String mountName) {
+    public void openMountInfoGUI(Player player, Integer mountId) {
         GUISession session = new GUISession(player, GUIType.MOUNT_INFO, 0);
-        session.setSelectedMount(mountName);
+        session.setSelectedMountId(mountId);
         activeSessions.put(player, session);
         
-        MountInfoGUI infoGUI = new MountInfoGUI(plugin, player, mountName);
+        MountInfoGUI infoGUI = new MountInfoGUI(plugin, player, mountId);
         infoGUI.open();
     }
     
-    public void openConfirmationGUI(Player player, String action, String mountName) {
+    public void openConfirmationGUI(Player player, String action, Integer mountId) {
         GUISession session = new GUISession(player, GUIType.CONFIRMATION, 0);
-        session.setSelectedMount(mountName);
+        session.setSelectedMountId(mountId);
         session.setAction(action);
         activeSessions.put(player, session);
         
-        ConfirmationGUI confirmGUI = new ConfirmationGUI(plugin, player, action, mountName);
+        ConfirmationGUI confirmGUI = new ConfirmationGUI(plugin, player, action, mountId);
         confirmGUI.open();
     }
     
@@ -203,16 +203,31 @@ public class GUIManager {
         }
     }
     
-    public static ItemStack createMountItem(String mountName, String mountType, boolean isActive, 
-                                          double health, double maxHealth, double speed, double jump) {
+    public static ItemStack createMountItem(int mountId, String mountName, String mountType, boolean isActive, 
+                                          double health, double maxHealth, double speed, double jump, SimpleMounts plugin) {
         Material material = getMountMaterial(mountType);
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         
         if (meta != null) {
-            meta.setDisplayName(ChatColor.GOLD + mountName);
+            // Store mount ID in persistent data for reliable retrieval
+            meta.getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey(plugin, "mount_id"), 
+                org.bukkit.persistence.PersistentDataType.INTEGER, 
+                mountId
+            );
+            
+            // Set display name - show name if available, otherwise show "Unnamed Type #ID"
+            String displayName;
+            if (mountName != null && !mountName.trim().isEmpty()) {
+                displayName = mountName;
+            } else {
+                displayName = "Unnamed " + mountType + " #" + mountId;
+            }
+            meta.setDisplayName(ChatColor.GOLD + displayName);
             
             List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "ID: " + ChatColor.WHITE + "#" + mountId);
             lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + mountType);
             lore.add(ChatColor.GRAY + "Status: " + (isActive ? ChatColor.GREEN + "Active" : ChatColor.YELLOW + "Stored"));
             lore.add("");
@@ -227,7 +242,7 @@ public class GUIManager {
             }
             
             meta.setLore(lore);
-            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
             item.setItemMeta(meta);
         }
         

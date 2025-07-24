@@ -16,13 +16,17 @@ taming:
   taming_items:
     # Default taming item for all mount types
     default:
-      material: "GOLDEN_CARROT"
-      name: "&6Mount Taming Treat"
+      material: "COOKIE"
+      name: "&6Mount Taming Cookie"
       lore:
+        - "&7A special treat that animals love!"
         - "&7Right-click a rideable animal"
         - "&7to claim it as your mount!"
+        - ""
+        - "&8Crafted with love and magic dust"
       custom_model_data: null
-      enchantments: []
+      enchantments:
+        - "UNBREAKING:1"
       consume_on_use: true
       
     # Type-specific taming items
@@ -299,11 +303,13 @@ messages:
   prefix: "&8[&6SimpleMounts&8] "
   
   # Core Command Messages
-  mount_stored: "&aMount '{name}' has been stored!"
-  mount_summoned: "&aMount '{name}' has been summoned!"
-  mount_claimed: "&aYou have successfully claimed '{name}'!"
-  mount_claimed_and_stored: "&aYou have successfully claimed and stored '{name}'!"
-  mount_released: "&aMount '{name}' has been released!"
+  mount_stored: "&aMount has been stored!"
+  mount_stored_with_id: "&aMount has been stored!"
+  mount_auto_stored: "&aMount has been automatically stored!"
+  mount_summoned: "&aMount has been summoned!"
+  mount_claimed: "&aYou have successfully claimed the mount!"
+  mount_claimed_and_stored: "&aYou have successfully claimed and stored the mount!"
+  mount_released: "&aMount has been released!"
   mount_renamed: "&aMount '{old_name}' has been renamed to '{new_name}'!"
   config_reloaded: "&aConfiguration has been reloaded!"
   
@@ -328,6 +334,13 @@ messages:
   not_your_mount: "&cThis mount doesn't belong to you!"
   no_safe_location: "&cCould not find a safe location to summon your mount!"
   no_permission: "&cYou don't have permission to do that!"
+  
+  # Name Validation Messages
+  name_empty: "&cMount name cannot be empty!"
+  name_invalid_characters: "&cMount name contains only invalid characters!"
+  name_blacklisted: "&cThat name is not allowed!"
+  name_too_short: "&cMount name must be at least {min} characters long!"
+  name_too_long: "&cMount name cannot be longer than {max} characters!"
   
   # Taming System Messages
   entity_protected: "&cThis entity is protected and cannot be tamed!"
@@ -453,6 +466,21 @@ messages:
   # GUI Warnings
   gui_warning_permanent: "WARNING: This cannot be undone!"
   gui_mount_not_found: "Mount Not Found"
+  
+  # Duplicate Name Handling
+  multiple_mounts_found: "&eMultiple mounts found with name '{name}':"
+  select_mount_by_id: "&7Select a mount by typing: &e/mount {command} {name} <id>"
+  mount_id_format: "&7- #{id}: {type} (created {date})"
+  mount_not_found_with_id: "&cMount '{name}' with ID #{id} not found!"
+  invalid_mount_id: "&cInvalid mount ID: {id}"
+  
+  # Unnamed Mount Messages
+  unnamed_mount_display: "Unnamed {type} #{id}"
+  mount_tamed_unnamed: "&aYou have successfully claimed the mount!"
+  
+  # Rename Command Messages
+  no_active_mount_to_rename: "&cYou don't have any active mounts to rename!"
+  multiple_active_mounts_rename: "&cYou have multiple active mounts. Please store all but one first."
   
 # Enable debug logging
 debug: false

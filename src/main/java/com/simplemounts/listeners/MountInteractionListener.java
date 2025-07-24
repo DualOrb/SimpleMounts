@@ -48,10 +48,10 @@ public class MountInteractionListener implements Listener {
         }
         
         // Update last accessed time
-        String mountName = mountManager.getMountName(vehicle.getUniqueId());
-        if (mountName != null) {
+        Integer mountId = mountManager.getMountId(vehicle.getUniqueId());
+        if (mountId != null) {
             plugin.runAsync(() -> {
-                plugin.getDatabaseManager().updateLastAccessed(player.getUniqueId(), mountName);
+                plugin.getDatabaseManager().updateLastAccessed(player.getUniqueId(), mountId);
             });
         }
     }
@@ -73,6 +73,7 @@ public class MountInteractionListener implements Listener {
             plugin.getDatabaseManager().addActiveMount(
                 vehicle.getUniqueId(),
                 UUID.fromString(vehicle.getMetadata("simplemounts.owner").get(0).asString()),
+                mountManager.getMountId(vehicle.getUniqueId()),
                 mountManager.getMountName(vehicle.getUniqueId()),
                 vehicle.getWorld().getName(),
                 vehicle.getLocation().getX(),
@@ -148,7 +149,10 @@ public class MountInteractionListener implements Listener {
             plugin.getDatabaseManager().removeActiveMount(entity.getUniqueId());
             
             // Remove from stored mounts
-            plugin.getDatabaseManager().deleteMountData(ownerUuid, mountName);
+            Integer mountId = mountManager.getMountId(entity.getUniqueId());
+            if (mountId != null) {
+                plugin.getDatabaseManager().deleteMountData(ownerUuid, mountId);
+            }
             
             // Notify owner if online
             Player owner = plugin.getServer().getPlayer(ownerUuid);
@@ -161,11 +165,13 @@ public class MountInteractionListener implements Listener {
     }
     
     private boolean isPlayerOwnedMount(Entity entity, Player player) {
-        if (!entity.hasMetadata("simplemounts.owner")) {
+        org.bukkit.NamespacedKey ownerKey = new org.bukkit.NamespacedKey(plugin, "simplemounts_owner");
+        String ownerUuid = entity.getPersistentDataContainer().get(ownerKey, org.bukkit.persistence.PersistentDataType.STRING);
+        
+        if (ownerUuid == null) {
             return false;
         }
         
-        String ownerUuid = entity.getMetadata("simplemounts.owner").get(0).asString();
         return ownerUuid.equals(player.getUniqueId().toString());
     }
     

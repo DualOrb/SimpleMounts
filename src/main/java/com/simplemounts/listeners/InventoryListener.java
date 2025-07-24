@@ -52,10 +52,10 @@ public class InventoryListener implements Listener {
         }
         
         // Update last accessed time
-        String mountName = mountManager.getMountName(entity.getUniqueId());
-        if (mountName != null) {
+        Integer mountId = mountManager.getMountId(entity.getUniqueId());
+        if (mountId != null) {
             plugin.runAsync(() -> {
-                plugin.getDatabaseManager().updateLastAccessed(player.getUniqueId(), mountName);
+                plugin.getDatabaseManager().updateLastAccessed(player.getUniqueId(), mountId);
             });
         }
     }
@@ -125,11 +125,13 @@ public class InventoryListener implements Listener {
     }
     
     private boolean isPlayerOwnedMount(Entity entity, Player player) {
-        if (!entity.hasMetadata("simplemounts.owner")) {
+        org.bukkit.NamespacedKey ownerKey = new org.bukkit.NamespacedKey(plugin, "simplemounts_owner");
+        String ownerUuid = entity.getPersistentDataContainer().get(ownerKey, org.bukkit.persistence.PersistentDataType.STRING);
+        
+        if (ownerUuid == null) {
             return false;
         }
         
-        String ownerUuid = entity.getMetadata("simplemounts.owner").get(0).asString();
         return ownerUuid.equals(player.getUniqueId().toString());
     }
     

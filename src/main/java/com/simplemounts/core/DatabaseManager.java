@@ -22,13 +22,12 @@ public class DatabaseManager {
         CREATE TABLE IF NOT EXISTS player_mounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             player_uuid TEXT NOT NULL,
-            mount_name TEXT NOT NULL,
+            mount_name TEXT,
             mount_type TEXT NOT NULL,
             mount_data TEXT NOT NULL,
             chest_inventory TEXT,
             created_at INTEGER NOT NULL,
-            last_accessed INTEGER NOT NULL,
-            UNIQUE(player_uuid, mount_name)
+            last_accessed INTEGER NOT NULL
         )
     """;
     
@@ -36,7 +35,8 @@ public class DatabaseManager {
         CREATE TABLE IF NOT EXISTS active_mounts (
             entity_uuid TEXT PRIMARY KEY,
             player_uuid TEXT NOT NULL,
-            mount_name TEXT NOT NULL,
+            mount_id INTEGER NOT NULL,
+            mount_name TEXT,
             world_name TEXT NOT NULL,
             x REAL NOT NULL,
             y REAL NOT NULL,
@@ -67,6 +67,7 @@ public class DatabaseManager {
         try {
             setupDataSource();
             createTables();
+            migrateDatabaseSchema();
             plugin.getLogger().info("Database initialized successfully");
             return true;
         } catch (SQLException e) {
@@ -113,6 +114,86 @@ public class DatabaseManager {
         }
     }
     
+    private void migrateDatabaseSchema() throws SQLException {
+        try (Connection conn = getConnection()) {
+            // Check if we need to migrate from old schema
+            boolean needsMigration = false;
+            
+            // Check if the old unique constraint exists
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs = stmt.executeQuery("PRAGMA table_info(player_mounts)");
+                boolean hasUniqueConstraint = false;
+                
+                // Check if we have the old schema by looking for unique constraint
+                try (Statement constraintStmt = conn.createStatement()) {
+                    ResultSet constraintRs = constraintStmt.executeQuery(
+                        "SELECT sql FROM sqlite_master WHERE type='table' AND name='player_mounts'"
+                    );
+                    if (constraintRs.next()) {
+                        String tableSql = constraintRs.getString("sql");
+                        if (tableSql.contains("UNIQUE(player_uuid, mount_name)")) {
+                            needsMigration = true;
+                        }
+                    }
+                }
+                
+                if (needsMigration) {
+                    plugin.getLogger().info("Migrating database schema to support duplicate mount names...");
+                    
+                    // Create temporary table with new schema
+                    stmt.execute("""
+                        CREATE TABLE player_mounts_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            player_uuid TEXT NOT NULL,
+                            mount_name TEXT,
+                            mount_type TEXT NOT NULL,
+                            mount_data TEXT NOT NULL,
+                            chest_inventory TEXT,
+                            created_at INTEGER NOT NULL,
+                            last_accessed INTEGER NOT NULL
+                        )
+                    """);
+                    
+                    // Copy data from old table to new table
+                    stmt.execute("""
+                        INSERT INTO player_mounts_new 
+                        (id, player_uuid, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed)
+                        SELECT id, player_uuid, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed
+                        FROM player_mounts
+                    """);
+                    
+                    // Drop old table and rename new table
+                    stmt.execute("DROP TABLE player_mounts");
+                    stmt.execute("ALTER TABLE player_mounts_new RENAME TO player_mounts");
+                    
+                    // Recreate indexes
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_player_mounts_player_uuid ON player_mounts(player_uuid)");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_player_mounts_mount_type ON player_mounts(mount_type)");
+                    
+                    plugin.getLogger().info("Database schema migration completed successfully");
+                }
+                
+                // Check if active_mounts table needs mount_id column
+                boolean needsActiveMountsMigration = false;
+                ResultSet activeMountsInfo = stmt.executeQuery("PRAGMA table_info(active_mounts)");
+                boolean hasMountIdColumn = false;
+                
+                while (activeMountsInfo.next()) {
+                    if ("mount_id".equals(activeMountsInfo.getString("name"))) {
+                        hasMountIdColumn = true;
+                        break;
+                    }
+                }
+                
+                if (!hasMountIdColumn) {
+                    plugin.getLogger().info("Adding mount_id column to active_mounts table...");
+                    stmt.execute("ALTER TABLE active_mounts ADD COLUMN mount_id INTEGER DEFAULT 0");
+                    // Note: Existing active mounts will have mount_id = 0, which is fine as they'll be cleaned up on restart
+                }
+            }
+        }
+    }
+    
     public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
@@ -123,56 +204,96 @@ public class DatabaseManager {
         }
     }
     
-    public CompletableFuture<Boolean> saveMountData(UUID playerUuid, String mountName, String mountType, 
+    public CompletableFuture<Integer> saveMountData(UUID playerUuid, String mountName, String mountType, 
                                                    String mountData, String chestInventory) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = """
-                INSERT OR REPLACE INTO player_mounts 
+                INSERT INTO player_mounts 
                 (player_uuid, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """;
             
             try (Connection connection = getConnection();
-                 PreparedStatement stmt = connection.prepareStatement(sql)) {
+                 PreparedStatement stmt = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
                 
                 long currentTime = System.currentTimeMillis();
                 
                 stmt.setString(1, playerUuid.toString());
-                stmt.setString(2, mountName);
+                // Allow null mount names for unnamed mounts
+                if (mountName != null && !mountName.trim().isEmpty()) {
+                    stmt.setString(2, mountName.trim());
+                } else {
+                    stmt.setNull(2, java.sql.Types.VARCHAR);
+                }
                 stmt.setString(3, mountType);
                 stmt.setString(4, mountData);
                 stmt.setString(5, chestInventory);
                 stmt.setLong(6, currentTime);
                 stmt.setLong(7, currentTime);
                 
-                return stmt.executeUpdate() > 0;
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            return generatedKeys.getInt(1); // Return the generated ID
+                        }
+                    }
+                }
+                return 0; // Failed to save
                 
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to save mount data", e);
+                return 0; // Failed to save
+            }
+        });
+    }
+    
+    public CompletableFuture<Boolean> updateMountData(int mountId, String mountType, String mountData, String chestInventory) {
+        return CompletableFuture.supplyAsync(() -> {
+            String sql = """
+                UPDATE player_mounts 
+                SET mount_data = ?, chest_inventory = ?, last_accessed = ?
+                WHERE id = ?
+            """;
+            
+            try (Connection connection = getConnection();
+                 PreparedStatement stmt = connection.prepareStatement(sql)) {
+                
+                stmt.setString(1, mountData);
+                stmt.setString(2, chestInventory);
+                stmt.setLong(3, System.currentTimeMillis());
+                stmt.setInt(4, mountId);
+                
+                int rowsAffected = stmt.executeUpdate();
+                return rowsAffected > 0;
+                
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to update mount data for mount ID: " + mountId, e);
                 return false;
             }
         });
     }
     
-    public CompletableFuture<MountData> getMountData(UUID playerUuid, String mountName) {
+    public CompletableFuture<MountData> getMountData(UUID playerUuid, int mountId) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = """
-                SELECT mount_type, mount_data, chest_inventory, created_at, last_accessed
+                SELECT id, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed
                 FROM player_mounts
-                WHERE player_uuid = ? AND mount_name = ?
+                WHERE player_uuid = ? AND id = ?
             """;
             
             try (Connection connection = getConnection();
                  PreparedStatement stmt = connection.prepareStatement(sql)) {
                 
                 stmt.setString(1, playerUuid.toString());
-                stmt.setString(2, mountName);
+                stmt.setInt(2, mountId);
                 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         return new MountData(
+                            rs.getInt("id"),
                             playerUuid,
-                            mountName,
+                            rs.getString("mount_name"), // Can be null
                             rs.getString("mount_type"),
                             rs.getString("mount_data"),
                             rs.getString("chest_inventory"),
@@ -183,17 +304,57 @@ public class DatabaseManager {
                 }
                 
             } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to get mount data", e);
+                plugin.getLogger().log(Level.SEVERE, "Failed to get mount data by ID", e);
             }
             
             return null;
         });
     }
     
+    public CompletableFuture<List<MountData>> getMountsByName(UUID playerUuid, String mountName) {
+        return CompletableFuture.supplyAsync(() -> {
+            String sql = """
+                SELECT id, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed
+                FROM player_mounts
+                WHERE player_uuid = ? AND mount_name = ?
+                ORDER BY created_at DESC
+            """;
+            
+            List<MountData> mounts = new ArrayList<>();
+            
+            try (Connection connection = getConnection();
+                 PreparedStatement stmt = connection.prepareStatement(sql)) {
+                
+                stmt.setString(1, playerUuid.toString());
+                stmt.setString(2, mountName);
+                
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        mounts.add(new MountData(
+                            rs.getInt("id"),
+                            playerUuid,
+                            rs.getString("mount_name"),
+                            rs.getString("mount_type"),
+                            rs.getString("mount_data"),
+                            rs.getString("chest_inventory"),
+                            rs.getLong("created_at"),
+                            rs.getLong("last_accessed")
+                        ));
+                    }
+                }
+                
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to get mounts by name", e);
+            }
+            
+            return mounts;
+        });
+    }
+    
     public CompletableFuture<List<MountData>> getPlayerMounts(UUID playerUuid) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = """
-                SELECT mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed
+                SELECT id, mount_name, mount_type, mount_data, chest_inventory, created_at, last_accessed
                 FROM player_mounts
                 WHERE player_uuid = ?
                 ORDER BY last_accessed DESC
@@ -209,8 +370,9 @@ public class DatabaseManager {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         mounts.add(new MountData(
+                            rs.getInt("id"),
                             playerUuid,
-                            rs.getString("mount_name"),
+                            rs.getString("mount_name"), // Can be null
                             rs.getString("mount_type"),
                             rs.getString("mount_data"),
                             rs.getString("chest_inventory"),
@@ -228,15 +390,15 @@ public class DatabaseManager {
         });
     }
     
-    public CompletableFuture<Boolean> deleteMountData(UUID playerUuid, String mountName) {
+    public CompletableFuture<Boolean> deleteMountData(UUID playerUuid, int mountId) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "DELETE FROM player_mounts WHERE player_uuid = ? AND mount_name = ?";
+            String sql = "DELETE FROM player_mounts WHERE player_uuid = ? AND id = ?";
             
             try (Connection connection = getConnection();
                  PreparedStatement stmt = connection.prepareStatement(sql)) {
                 
                 stmt.setString(1, playerUuid.toString());
-                stmt.setString(2, mountName);
+                stmt.setInt(2, mountId);
                 
                 return stmt.executeUpdate() > 0;
                 
@@ -247,21 +409,46 @@ public class DatabaseManager {
         });
     }
     
-    public CompletableFuture<Boolean> updateLastAccessed(UUID playerUuid, String mountName) {
+    public CompletableFuture<Boolean> updateLastAccessed(UUID playerUuid, int mountId) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "UPDATE player_mounts SET last_accessed = ? WHERE player_uuid = ? AND mount_name = ?";
+            String sql = "UPDATE player_mounts SET last_accessed = ? WHERE player_uuid = ? AND id = ?";
             
             try (Connection connection = getConnection();
                  PreparedStatement stmt = connection.prepareStatement(sql)) {
                 
                 stmt.setLong(1, System.currentTimeMillis());
                 stmt.setString(2, playerUuid.toString());
-                stmt.setString(3, mountName);
+                stmt.setInt(3, mountId);
                 
                 return stmt.executeUpdate() > 0;
                 
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to update last accessed", e);
+                return false;
+            }
+        });
+    }
+    
+    public CompletableFuture<Boolean> updateMountName(UUID playerUuid, int mountId, String newName) {
+        return CompletableFuture.supplyAsync(() -> {
+            String sql = "UPDATE player_mounts SET mount_name = ? WHERE player_uuid = ? AND id = ?";
+            
+            try (Connection connection = getConnection();
+                 PreparedStatement stmt = connection.prepareStatement(sql)) {
+                
+                // Allow null names for unnamed mounts
+                if (newName != null && !newName.trim().isEmpty()) {
+                    stmt.setString(1, newName.trim());
+                } else {
+                    stmt.setNull(1, java.sql.Types.VARCHAR);
+                }
+                stmt.setString(2, playerUuid.toString());
+                stmt.setInt(3, mountId);
+                
+                return stmt.executeUpdate() > 0;
+                
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to update mount name", e);
                 return false;
             }
         });
@@ -314,13 +501,13 @@ public class DatabaseManager {
         });
     }
     
-    public CompletableFuture<Boolean> addActiveMount(UUID entityUuid, UUID playerUuid, String mountName, 
+    public CompletableFuture<Boolean> addActiveMount(UUID entityUuid, UUID playerUuid, int mountId, String mountName, 
                                                     String worldName, double x, double y, double z) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = """
                 INSERT OR REPLACE INTO active_mounts
-                (entity_uuid, player_uuid, mount_name, world_name, x, y, z, spawned_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (entity_uuid, player_uuid, mount_id, mount_name, world_name, x, y, z, spawned_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
             
             try (Connection connection = getConnection();
@@ -328,12 +515,18 @@ public class DatabaseManager {
                 
                 stmt.setString(1, entityUuid.toString());
                 stmt.setString(2, playerUuid.toString());
-                stmt.setString(3, mountName);
-                stmt.setString(4, worldName);
-                stmt.setDouble(5, x);
-                stmt.setDouble(6, y);
-                stmt.setDouble(7, z);
-                stmt.setLong(8, System.currentTimeMillis());
+                stmt.setInt(3, mountId);
+                // Allow null mount names
+                if (mountName != null && !mountName.trim().isEmpty()) {
+                    stmt.setString(4, mountName.trim());
+                } else {
+                    stmt.setNull(4, java.sql.Types.VARCHAR);
+                }
+                stmt.setString(5, worldName);
+                stmt.setDouble(6, x);
+                stmt.setDouble(7, y);
+                stmt.setDouble(8, z);
+                stmt.setLong(9, System.currentTimeMillis());
                 
                 return stmt.executeUpdate() > 0;
                 

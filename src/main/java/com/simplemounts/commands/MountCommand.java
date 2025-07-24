@@ -128,21 +128,50 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             
-            String mountName = args[1];
-            
-            plugin.runAsync(() -> {
-                try {
-                    mountManager.summonMount(player, mountName);
-                } catch (Exception e) {
-                    plugin.getLogger().severe("Error summoning mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
-                    e.printStackTrace();
-                    plugin.runSync(() -> {
-                        Map<String, String> placeholders = new HashMap<>();
-                        placeholders.put("name", mountName);
-                        sendMessage(player, "mount_summon_failed", placeholders);
-                    });
-                }
-            });
+            // Check if this is an ID-based command or name-based command
+            if (args.length >= 3 && isNumeric(args[2])) {
+                // Format: /mount summon <name> <id>
+                String mountName = args[1];
+                int mountId = Integer.parseInt(args[2]);
+                
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.summonMount(player, mountId);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error summoning mount ID " + mountId + " for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+            } else if (isNumeric(args[1])) {
+                // Format: /mount summon <id>
+                int mountId = Integer.parseInt(args[1]);
+                
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.summonMount(player, mountId);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error summoning mount ID " + mountId + " for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+            } else {
+                // Format: /mount summon <name>
+                String mountName = args[1];
+                
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.summonMount(player, mountName);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error summoning mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                        plugin.runSync(() -> {
+                            Map<String, String> placeholders = new HashMap<>();
+                            placeholders.put("name", mountName);
+                            sendMessage(player, "mount_summon_failed", placeholders);
+                        });
+                    }
+                });
+            }
         } catch (Exception e) {
             plugin.getLogger().severe("Error in handleSummon: " + e.getMessage());
             e.printStackTrace();
@@ -238,21 +267,86 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             
-            String mountName = args[1];
-            
-            plugin.runAsync(() -> {
-                try {
-                    mountManager.releaseMount(player, mountName);
-                } catch (Exception e) {
-                    plugin.getLogger().severe("Error releasing mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
-                    e.printStackTrace();
-                    plugin.runSync(() -> {
-                        Map<String, String> placeholders = new HashMap<>();
-                        placeholders.put("name", mountName);
-                        sendMessage(player, "mount_release_failed", placeholders);
-                    });
-                }
-            });
+            // Check if this is an ID-based command or name-based command
+            if (args.length >= 3 && isNumeric(args[2])) {
+                // Format: /mount release <name> <id>
+                String mountName = args[1];
+                int mountId = Integer.parseInt(args[2]);
+                
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.releaseMount(player, mountId);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error releasing mount ID " + mountId + " for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+            } else if (isNumeric(args[1])) {
+                // Format: /mount release <id>
+                int mountId = Integer.parseInt(args[1]);
+                
+                plugin.runAsync(() -> {
+                    try {
+                        mountManager.releaseMount(player, mountId);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error releasing mount ID " + mountId + " for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+            } else {
+                // Format: /mount release <name> - This will show selection if duplicates exist
+                String mountName = args[1];
+                
+                plugin.runAsync(() -> {
+                    try {
+                        // Get mounts by name to check for duplicates
+                        List<MountData> mounts = mountManager.getMountsByName(player, mountName).get();
+                        if (mounts.isEmpty()) {
+                            plugin.runSync(() -> {
+                                Map<String, String> placeholders = new HashMap<>();
+                                placeholders.put("name", mountName);
+                                sendMessage(player, "mount_not_found", placeholders);
+                            });
+                            return;
+                        }
+                        
+                        if (mounts.size() > 1) {
+                            // Multiple mounts with the same name - ask user to specify ID
+                            plugin.runSync(() -> {
+                                Map<String, String> placeholders = new HashMap<>();
+                                placeholders.put("name", mountName);
+                                sendMessage(player, "multiple_mounts_found", placeholders);
+                                
+                                for (MountData mount : mounts) {
+                                    Map<String, String> mountPlaceholders = new HashMap<>();
+                                    mountPlaceholders.put("id", String.valueOf(mount.getId()));
+                                    mountPlaceholders.put("type", mount.getMountTypeEnum().getDisplayName());
+                                    mountPlaceholders.put("date", new java.text.SimpleDateFormat("MMM dd, yyyy").format(new java.util.Date(mount.getCreatedAt())));
+                                    sendMessage(player, "mount_id_format", mountPlaceholders);
+                                }
+                                
+                                Map<String, String> helpPlaceholders = new HashMap<>();
+                                helpPlaceholders.put("command", "release");
+                                helpPlaceholders.put("name", mountName);
+                                sendMessage(player, "select_mount_by_id", helpPlaceholders);
+                            });
+                            return;
+                        }
+                        
+                        // Single mount found, release it
+                        mountManager.releaseMount(player, mounts.get(0).getId());
+                        
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error releasing mount '" + mountName + "' for player " + player.getName() + ": " + e.getMessage());
+                        e.printStackTrace();
+                        plugin.runSync(() -> {
+                            Map<String, String> placeholders = new HashMap<>();
+                            placeholders.put("name", mountName);
+                            sendMessage(player, "mount_release_failed", placeholders);
+                        });
+                    }
+                });
+            }
         } catch (Exception e) {
             plugin.getLogger().severe("Error in handleRelease: " + e.getMessage());
             e.printStackTrace();
@@ -272,46 +366,93 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             
-            String mountName = args[1];
-            
             plugin.runAsync(() -> {
                 try {
-                    mountManager.getMountData(player, mountName).thenAccept(mountData -> {
-                        plugin.runSync(() -> {
-                            try {
-                                displayMountInfo(player, mountData);
-                            } catch (Exception e) {
-                                plugin.getLogger().severe("Error displaying mount info for '" + mountName + "' to player " + player.getName() + ": " + e.getMessage());
-                                e.printStackTrace();
+                    // Check if this is an ID-based command or name-based command
+                    if (args.length >= 3 && isNumeric(args[2])) {
+                        // Format: /mount info <name> <id>
+                        int mountId = Integer.parseInt(args[2]);
+                        mountManager.getMountData(player, mountId).thenAccept(mountData -> {
+                            plugin.runSync(() -> {
+                                if (mountData != null) {
+                                    displayMountInfo(player, mountData);
+                                } else {
+                                    Map<String, String> placeholders = new HashMap<>();
+                                    placeholders.put("id", String.valueOf(mountId));
+                                    sendMessage(player, "mount_not_found_with_id", placeholders);
+                                }
+                            });
+                        });
+                    } else if (isNumeric(args[1])) {
+                        // Format: /mount info <id>
+                        int mountId = Integer.parseInt(args[1]);
+                        mountManager.getMountData(player, mountId).thenAccept(mountData -> {
+                            plugin.runSync(() -> {
+                                if (mountData != null) {
+                                    displayMountInfo(player, mountData);
+                                } else {
+                                    Map<String, String> placeholders = new HashMap<>();
+                                    placeholders.put("id", String.valueOf(mountId));
+                                    sendMessage(player, "mount_not_found_with_id", placeholders);
+                                }
+                            });
+                        });
+                    } else {
+                        // Format: /mount info <name> - This will show selection if duplicates exist
+                        String mountName = args[1];
+                        
+                        // Get mounts by name to check for duplicates
+                        List<MountData> mounts = mountManager.getMountsByName(player, mountName).get();
+                        if (mounts.isEmpty()) {
+                            plugin.runSync(() -> {
                                 Map<String, String> placeholders = new HashMap<>();
                                 placeholders.put("name", mountName);
                                 sendMessage(player, "mount_not_found", placeholders);
-                            }
-                        });
-                    }).exceptionally(ex -> {
-                        plugin.getLogger().severe("Error getting mount data for '" + mountName + "' for player " + player.getName() + ": " + ex.getMessage());
-                        ex.printStackTrace();
+                            });
+                            return;
+                        }
+                        
+                        if (mounts.size() > 1) {
+                            // Multiple mounts with the same name - ask user to specify ID
+                            plugin.runSync(() -> {
+                                Map<String, String> placeholders = new HashMap<>();
+                                placeholders.put("name", mountName);
+                                sendMessage(player, "multiple_mounts_found", placeholders);
+                                
+                                for (MountData mount : mounts) {
+                                    Map<String, String> mountPlaceholders = new HashMap<>();
+                                    mountPlaceholders.put("id", String.valueOf(mount.getId()));
+                                    mountPlaceholders.put("type", mount.getMountTypeEnum().getDisplayName());
+                                    mountPlaceholders.put("date", new java.text.SimpleDateFormat("MMM dd, yyyy").format(new java.util.Date(mount.getCreatedAt())));
+                                    sendMessage(player, "mount_id_format", mountPlaceholders);
+                                }
+                                
+                                Map<String, String> helpPlaceholders = new HashMap<>();
+                                helpPlaceholders.put("command", "info");
+                                helpPlaceholders.put("name", mountName);
+                                sendMessage(player, "select_mount_by_id", helpPlaceholders);
+                            });
+                            return;
+                        }
+                        
+                        // Single mount found, show info
                         plugin.runSync(() -> {
-                            Map<String, String> placeholders = new HashMap<>();
-                            placeholders.put("name", mountName);
-                            sendMessage(player, "mount_not_found", placeholders);
+                            displayMountInfo(player, mounts.get(0));
                         });
-                        return null;
-                    });
+                    }
+                    
                 } catch (Exception e) {
-                    plugin.getLogger().severe("Error in async mount info operation: " + e.getMessage());
+                    plugin.getLogger().severe("Error in handleInfo for player " + player.getName() + ": " + e.getMessage());
                     e.printStackTrace();
                     plugin.runSync(() -> {
-                        Map<String, String> placeholders = new HashMap<>();
-                        placeholders.put("name", mountName);
-                        sendMessage(player, "mount_not_found", placeholders);
+                        sendMessage(player, "mount_not_found");
                     });
                 }
             });
         } catch (Exception e) {
             plugin.getLogger().severe("Error in handleInfo: " + e.getMessage());
             e.printStackTrace();
-            sendMessage(player, "mount_claim_failed");
+            sendMessage(player, "mount_not_found");
         }
     }
     
@@ -321,56 +462,77 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        if (args.length < 3) {
-            sendMessage(player, "Usage: /mount rename <old_name> <new_name>");
+        if (args.length < 2) {
+            sendMessage(player, "usage_rename");
             return;
         }
         
-        String oldName = args[1];
-        String newName = args[2];
+        String rawName = args[1]; // New name is the first argument
         
-        if (!isValidMountName(newName)) {
-            sendMessage(player, "invalid_mount_name");
+        // Validate and sanitize the new name
+        String sanitizedName = plugin.getNameValidator().validateAndSanitizeName(rawName);
+        String validationError = plugin.getNameValidator().getValidationError(rawName, sanitizedName);
+        
+        if (validationError != null) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("min", String.valueOf(plugin.getConfigManager().getMinNameLength()));
+            placeholders.put("max", String.valueOf(plugin.getConfigManager().getMaxNameLength()));
+            
+            // Send appropriate error message based on validation result  
+            if (validationError.contains("empty")) {
+                sendMessage(player, "name_empty", placeholders);
+            } else if (validationError.contains("invalid characters")) {
+                sendMessage(player, "name_invalid_characters", placeholders);
+            } else if (validationError.contains("not allowed")) {
+                sendMessage(player, "name_blacklisted", placeholders);
+            } else if (validationError.contains("between")) {
+                sendMessage(player, "invalid_mount_name", placeholders);
+            } else {
+                sendMessage(player, "invalid_mount_name", placeholders);
+            }
             return;
         }
         
         plugin.runAsync(() -> {
-            mountManager.getMountData(player, oldName).thenAccept(oldMount -> {
-                if (oldMount == null) {
-                    sendMessage(player, "mount_not_found", oldName);
+            try {
+                // Get currently active mounts for the player
+                Set<UUID> activeMounts = mountManager.getPlayerActiveMounts(player.getUniqueId());
+                
+                if (activeMounts.isEmpty()) {
+                    plugin.runSync(() -> {
+                        sendMessage(player, "no_active_mount_to_rename");
+                    });
                     return;
                 }
                 
-                mountManager.getMountData(player, newName).thenAccept(existingMount -> {
-                    if (existingMount != null) {
-                        sendMessage(player, "mount_name_exists", newName);
-                        return;
-                    }
-                    
-                    // Create new mount with new name
-                    plugin.getDatabaseManager().saveMountData(
-                        player.getUniqueId(),
-                        newName,
-                        oldMount.getMountType(),
-                        oldMount.getMountDataYaml(),
-                        oldMount.getChestInventoryData()
-                    ).thenAccept(saved -> {
-                        if (saved) {
-                            // Delete old mount
-                            plugin.getDatabaseManager().deleteMountData(player.getUniqueId(), oldName)
-                                .thenAccept(deleted -> {
-                                    if (deleted) {
-                                        sendMessage(player, "mount_renamed", oldName, newName);
-                                    } else {
-                                        sendMessage(player, "mount_rename_failed");
-                                    }
-                                });
-                        } else {
-                            sendMessage(player, "mount_rename_failed");
-                        }
+                if (activeMounts.size() > 1) {
+                    plugin.runSync(() -> {
+                        sendMessage(player, "multiple_active_mounts_rename");
                     });
+                    return;
+                }
+                
+                // Get the single active mount
+                UUID activeMount = activeMounts.iterator().next();
+                Integer mountId = mountManager.getMountId(activeMount);
+                
+                if (mountId == null) {
+                    plugin.runSync(() -> {
+                        sendMessage(player, "mount_rename_failed");
+                    });
+                    return;
+                }
+                
+                // Rename the active mount using the sanitized name
+                mountManager.renameMount(player, mountId, sanitizedName);
+                
+            } catch (Exception e) {
+                plugin.getLogger().severe("Error renaming mount for player " + player.getName() + ": " + e.getMessage());
+                e.printStackTrace();
+                plugin.runSync(() -> {
+                    sendMessage(player, "mount_rename_failed");
                 });
-            });
+            }
         });
     }
     
@@ -617,7 +779,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 case "info":
                 case "release":
                 case "rename":
-                    return getPlayerMountNames(player, args[1]);
+                    return Collections.singletonList("<new_name>");
                 case "store":
                     return Collections.singletonList("<name>");
                 default:
@@ -625,9 +787,6 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             }
         }
         
-        if (args.length == 3 && args[0].equalsIgnoreCase("rename")) {
-            return Collections.singletonList("<new_name>");
-        }
         
         return new ArrayList<>();
     }
@@ -640,7 +799,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         
         if (args.length < 2) {
             player.sendMessage(ChatColor.YELLOW + "Usage: /mount give <item>");
-            player.sendMessage(ChatColor.YELLOW + "Available items: default, horse, donkey, mule, camel, strider, pig, llama");
+            player.sendMessage(ChatColor.YELLOW + "Available items: cookie, default, horse, donkey, mule, camel, strider, pig, llama");
             return;
         }
         
@@ -649,6 +808,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         
         switch (itemType) {
             case "default":
+            case "cookie":
                 tamingItem = plugin.getConfigManager().getTamingItem("default");
                 break;
             case "horse":
@@ -762,6 +922,18 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 .collect(Collectors.toList());
         } catch (Exception e) {
             return new ArrayList<>();
+        }
+    }
+    
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 }

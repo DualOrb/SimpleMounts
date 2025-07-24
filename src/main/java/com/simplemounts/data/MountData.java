@@ -4,16 +4,18 @@ import java.util.UUID;
 
 public class MountData {
     
+    private final int id;
     private final UUID playerUuid;
-    private final String mountName;
+    private final String mountName; // Can be null for unnamed mounts
     private final String mountType;
     private final String mountDataYaml;
     private final String chestInventoryData;
     private final long createdAt;
     private final long lastAccessed;
     
-    public MountData(UUID playerUuid, String mountName, String mountType, String mountDataYaml, 
+    public MountData(int id, UUID playerUuid, String mountName, String mountType, String mountDataYaml, 
                      String chestInventoryData, long createdAt, long lastAccessed) {
+        this.id = id;
         this.playerUuid = playerUuid;
         this.mountName = mountName;
         this.mountType = mountType;
@@ -23,12 +25,28 @@ public class MountData {
         this.lastAccessed = lastAccessed;
     }
     
+    
+    public int getId() {
+        return id;
+    }
+    
     public UUID getPlayerUuid() {
         return playerUuid;
     }
     
     public String getMountName() {
         return mountName;
+    }
+    
+    public boolean hasName() {
+        return mountName != null && !mountName.trim().isEmpty();
+    }
+    
+    public String getDisplayName() {
+        if (hasName()) {
+            return mountName;
+        }
+        return "Unnamed " + getMountTypeEnum().getDisplayName() + " #" + id;
     }
     
     public String getMountType() {
@@ -82,14 +100,14 @@ public class MountData {
         
         MountData mountData = (MountData) o;
         
-        if (!playerUuid.equals(mountData.playerUuid)) return false;
-        return mountName.equals(mountData.mountName);
+        if (id != mountData.id) return false;
+        return playerUuid.equals(mountData.playerUuid);
     }
     
     @Override
     public int hashCode() {
         int result = playerUuid.hashCode();
-        result = 31 * result + mountName.hashCode();
+        result = 31 * result + id;
         return result;
     }
 }

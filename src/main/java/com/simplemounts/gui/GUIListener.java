@@ -26,7 +26,7 @@ public class GUIListener implements Listener {
     
     private final SimpleMounts plugin;
     private final GUIManager guiManager;
-    private final ConcurrentMap<Player, String> waitingForRename;
+    private final ConcurrentMap<Player, Integer> waitingForRename;
     
     public GUIListener(SimpleMounts plugin) {
         this.plugin = plugin;
@@ -102,10 +102,10 @@ public class GUIListener implements Listener {
         
         // Handle mount clicks
         if (isMountItem(clicked)) {
-            String mountName = extractMountName(displayName);
-            if (mountName != null) {
+            Integer mountId = extractMountId(clicked);
+            if (mountId != null) {
                 // Any click - summon/store mount (removed right-click details)
-                handleMountAction(player, mountName, clicked);
+                handleMountAction(player, mountId, clicked);
             }
         }
     }
@@ -135,25 +135,25 @@ public class GUIListener implements Listener {
         }
         
         if (displayName.contains("Refresh")) {
-            MountInfoGUI infoGUI = new MountInfoGUI(plugin, player, session.getSelectedMount());
+            MountInfoGUI infoGUI = new MountInfoGUI(plugin, player, session.getSelectedMountId());
             infoGUI.refresh();
             return;
         }
         
         // Handle action buttons
-        String mountName = session.getSelectedMount();
-        if (mountName == null) {
+        Integer mountId = session.getSelectedMountId();
+        if (mountId == null) {
             return;
         }
         
         if (displayName.contains("Summon Mount")) {
-            guiManager.openConfirmationGUI(player, "summon_mount", mountName);
+            guiManager.openConfirmationGUI(player, "summon_mount", mountId);
         } else if (displayName.contains("Store Mount")) {
-            guiManager.openConfirmationGUI(player, "store_mount", mountName);
+            guiManager.openConfirmationGUI(player, "store_mount", mountId);
         } else if (displayName.contains("Rename Mount")) {
-            guiManager.openConfirmationGUI(player, "rename_mount", mountName);
+            guiManager.openConfirmationGUI(player, "rename_mount", mountId);
         } else if (displayName.contains("Release Mount")) {
-            guiManager.openConfirmationGUI(player, "release_mount", mountName);
+            guiManager.openConfirmationGUI(player, "release_mount", mountId);
         }
     }
     
@@ -169,18 +169,18 @@ public class GUIListener implements Listener {
         }
         
         String displayName = meta.getDisplayName();
-        String mountName = session.getSelectedMount();
+        Integer mountId = session.getSelectedMountId();
         String action = session.getAction();
         
         if (displayName.contains("Confirm")) {
-            executeAction(player, action, mountName);
+            executeAction(player, action, mountId);
         } else if (displayName.contains("Cancel")) {
             // Return to mount info
-            guiManager.openMountInfoGUI(player, mountName);
+            guiManager.openMountInfoGUI(player, mountId);
         }
     }
     
-    private void handleMountAction(Player player, String mountName, ItemStack mountItem) {
+    private void handleMountAction(Player player, Integer mountId, ItemStack mountItem) {
         // Check if mount is active by looking at the lore
         ItemMeta meta = mountItem.getItemMeta();
         if (meta == null || meta.getLore() == null) {
@@ -197,67 +197,43 @@ public class GUIListener implements Listener {
         
         if (isActive) {
             // Store the mount
-            executeAction(player, "store_mount", mountName);
+            executeAction(player, "store_mount", mountId);
         } else {
             // Summon the mount
-            executeAction(player, "summon_mount", mountName);
+            executeAction(player, "summon_mount", mountId);
         }
     }
     
-    private void executeAction(Player player, String action, String mountName) {
+    private void executeAction(Player player, String action, Integer mountId) {
         MountManager mountManager = plugin.getMountManager();
         
         switch (action.toLowerCase()) {
             case "summon_mount":
                 plugin.runAsync(() -> {
-                    // First, store any currently active mount
-                    Set<UUID> activeMounts = mountManager.getPlayerActiveMounts(player.getUniqueId());
-                    if (!activeMounts.isEmpty()) {
-                        // Store the current mount before summoning the new one
-                        mountManager.storeCurrentMount(player).thenAccept(stored -> {
-                            if (stored) {
-                                // Now summon the new mount
-                                mountManager.summonMount(player, mountName).thenAccept(summoned -> {
-                                    plugin.runSync(() -> {
-                                        player.closeInventory();
-                                        guiManager.closeSession(player);
-                                        if (summoned) {
-                                            player.sendMessage(ChatColor.GREEN + "Switched to mount: " + mountName);
-                                        }
-                                    });
-                                });
-                            } else {
-                                plugin.runSync(() -> {
-                                    player.closeInventory();
-                                    guiManager.closeSession(player);
-                                });
-                            }
+                    // The summonMount method already handles dismissing existing mounts
+                    mountManager.summonMount(player, mountId).thenAccept(summoned -> {
+                        plugin.runSync(() -> {
+                            player.closeInventory();
+                            guiManager.closeSession(player);
                         });
-                    } else {
-                        // No active mount, just summon the requested one
-                        mountManager.summonMount(player, mountName).thenAccept(summoned -> {
-                            plugin.runSync(() -> {
-                                player.closeInventory();
-                                guiManager.closeSession(player);
-                            });
-                        });
-                    }
+                    });
                 });
                 break;
                 
             case "store_mount":
                 plugin.runAsync(() -> {
-                    mountManager.storeMount(player, mountName);
-                    plugin.runSync(() -> {
-                        player.closeInventory();
-                        guiManager.closeSession(player);
+                    mountManager.storeMount(player, mountId).thenAccept(stored -> {
+                        plugin.runSync(() -> {
+                            player.closeInventory();
+                            guiManager.closeSession(player);
+                        });
                     });
                 });
                 break;
                 
             case "release_mount":
                 plugin.runAsync(() -> {
-                    mountManager.releaseMount(player, mountName);
+                    mountManager.releaseMount(player, mountId);
                     plugin.runSync(() -> {
                         player.closeInventory();
                         guiManager.closeSession(player);
@@ -269,7 +245,7 @@ public class GUIListener implements Listener {
                 // Start rename process
                 player.closeInventory();
                 guiManager.closeSession(player);
-                waitingForRename.put(player, mountName);
+                waitingForRename.put(player, mountId);
                 player.sendMessage(ChatColor.YELLOW + "Please type the new name for your mount in chat:");
                 player.sendMessage(ChatColor.GRAY + "Type 'cancel' to cancel the rename.");
                 break;
@@ -286,7 +262,7 @@ public class GUIListener implements Listener {
         
         event.setCancelled(true);
         
-        String oldName = waitingForRename.remove(player);
+        Integer mountId = waitingForRename.remove(player);
         String newName = event.getMessage().trim();
         
         if (newName.equalsIgnoreCase("cancel")) {
@@ -307,7 +283,7 @@ public class GUIListener implements Listener {
         
         // Rename the mount
         plugin.runAsync(() -> {
-            plugin.getMountManager().renameMount(player, oldName, newName);
+            plugin.getMountManager().renameMount(player, mountId, newName);
         });
     }
     
@@ -332,8 +308,14 @@ public class GUIListener implements Listener {
         return materialName.contains("_SPAWN_EGG");
     }
     
-    private String extractMountName(String displayName) {
-        // Remove color codes and extract mount name
-        return ChatColor.stripColor(displayName);
+    private Integer extractMountId(ItemStack item) {
+        if (item == null || item.getItemMeta() == null) {
+            return null;
+        }
+        
+        return item.getItemMeta().getPersistentDataContainer().get(
+            new org.bukkit.NamespacedKey(plugin, "mount_id"), 
+            org.bukkit.persistence.PersistentDataType.INTEGER
+        );
     }
 }

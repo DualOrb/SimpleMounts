@@ -146,18 +146,20 @@ public class MountListGUI {
             // Parse mount attributes
             Map<String, Object> attributes = parseAttributes(mountData.getMountDataYaml());
             
-            // Check if mount is active
-            boolean isActive = plugin.getMountManager().isMountActive(player, mountData.getMountName());
+            // Check if mount is active by ID
+            boolean isActive = plugin.getMountManager().isMountActive(player, mountData.getId());
             
             // Create mount item
             ItemStack mountItem = GUIManager.createMountItem(
+                mountData.getId(),
                 mountData.getMountName(),
                 mountData.getMountType(),
                 isActive,
                 getDoubleAttribute(attributes, "health", 20.0),
                 getDoubleAttribute(attributes, "maxHealth", 20.0),
                 getDoubleAttribute(attributes, "speed", 0.2),
-                getDoubleAttribute(attributes, "jumpStrength", 0.7)
+                getDoubleAttribute(attributes, "jumpStrength", 0.7),
+                plugin
             );
             
             inventory.setItem(slot, mountItem);

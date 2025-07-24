@@ -13,13 +13,13 @@ public class ConfirmationGUI {
     private final SimpleMounts plugin;
     private final Player player;
     private final String action;
-    private final String mountName;
+    private final Integer mountId;
     
-    public ConfirmationGUI(SimpleMounts plugin, Player player, String action, String mountName) {
+    public ConfirmationGUI(SimpleMounts plugin, Player player, String action, Integer mountId) {
         this.plugin = plugin;
         this.player = player;
         this.action = action;
-        this.mountName = mountName;
+        this.mountId = mountId;
     }
     
     public void open() {
@@ -106,7 +106,7 @@ public class ConfirmationGUI {
             case "release_mount":
                 return new String[] {
                     "Are you sure you want to release:",
-                    ChatColor.YELLOW + mountName,
+                    ChatColor.YELLOW + "Mount #" + mountId,
                     "",
                     ChatColor.RED + "WARNING: This cannot be undone!",
                     ChatColor.RED + "The mount will be deleted forever."
@@ -114,7 +114,7 @@ public class ConfirmationGUI {
             case "store_mount":
                 return new String[] {
                     "Store the mount:",
-                    ChatColor.YELLOW + mountName,
+                    ChatColor.YELLOW + "Mount #" + mountId,
                     "",
                     "The mount will be safely stored",
                     "and removed from the world."
@@ -122,7 +122,7 @@ public class ConfirmationGUI {
             case "summon_mount":
                 return new String[] {
                     "Summon the mount:",
-                    ChatColor.YELLOW + mountName,
+                    ChatColor.YELLOW + "Mount #" + mountId,
                     "",
                     "The mount will appear near you",
                     "ready to be ridden."
@@ -130,7 +130,7 @@ public class ConfirmationGUI {
             case "rename_mount":
                 return new String[] {
                     "Rename the mount:",
-                    ChatColor.YELLOW + mountName,
+                    ChatColor.YELLOW + "Mount #" + mountId,
                     "",
                     "You'll need to type the new name",
                     "in chat after confirming."
@@ -138,7 +138,7 @@ public class ConfirmationGUI {
             default:
                 return new String[] {
                     "Confirm this action for:",
-                    ChatColor.YELLOW + mountName
+                    ChatColor.YELLOW + "Mount #" + mountId
                 };
         }
     }

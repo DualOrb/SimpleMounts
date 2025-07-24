@@ -92,14 +92,20 @@ public class CustomTamingListener implements Listener {
         plugin.getLogger().info("DEBUG: All checks passed, claiming mount!");
         event.setCancelled(true);
         
+        // Check if entity is already tracked as an active mount
+        if (mountManager.isActiveMount(entity.getUniqueId())) {
+            plugin.getLogger().info("DEBUG: Entity is already an active SimpleMounts mount - skipping duplicate claim");
+            return;
+        }
+        
         if (Math.random() * 100 > plugin.getConfigManager().getTamingSuccessChance()) {
             plugin.getLogger().info("DEBUG: Taming failed due to chance");
             sendMessage(player, "taming_failed");
             return;
         }
         
-        String mountName = generateMountName(mountType);
-        plugin.getLogger().info("DEBUG: Generated mount name: '" + mountName + "' (length: " + mountName.length() + ")");
+        String mountName = null; // Mounts are unnamed by default
+        plugin.getLogger().info("DEBUG: Mount will be unnamed by default");
         final TamingItem finalTamingItem = tamingItem; // Make it final for lambda
         
         plugin.runAsync(() -> {
@@ -115,21 +121,20 @@ public class CustomTamingListener implements Listener {
                             consumeItem(player, item);
                         }
                         
-                        // Auto-store the mount after claiming
+                        // Mount is claimed and active in the world
+                        // Auto-store it after a short delay to allow player to see it
                         plugin.runAsync(() -> {
                             try {
-                                Thread.sleep(500); // Small delay to ensure claim is processed
-                                mountManager.storeMount(player, mountName).thenAccept(stored -> {
-                                    if (stored) {
-                                        plugin.runSync(() -> {
-                                            sendMessage(player, "mount_claimed_and_stored", mountName);
-                                        });
-                                    } else {
-                                        plugin.runSync(() -> {
-                                            sendMessage(player, "mount_claimed", mountName);
-                                        });
-                                    }
-                                });
+                                Thread.sleep(2000); // 2 second delay to show the mount
+                                // Get the mount ID and store by ID
+                                Integer mountId = mountManager.getMountId(entity.getUniqueId());
+                                if (mountId != null) {
+                                    mountManager.storeMount(player, mountId).thenAccept(stored -> {
+                                        // Auto-storage happens silently
+                                    });
+                                } else {
+                                    plugin.getLogger().warning("Could not find mount ID for auto-storage");
+                                }
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                             }

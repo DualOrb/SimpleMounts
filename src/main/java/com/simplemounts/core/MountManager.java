@@ -24,6 +24,7 @@ public class MountManager {
     
     private final Map<UUID, Set<UUID>> playerActiveMounts;
     private final Map<UUID, String> entityMountNames;
+    private final Map<UUID, Integer> entityMountIds;
     private final Map<UUID, Long> mountDistanceWarningTime;
     
     public MountManager(SimpleMounts plugin) {
@@ -34,6 +35,7 @@ public class MountManager {
         
         this.playerActiveMounts = new ConcurrentHashMap<>();
         this.entityMountNames = new ConcurrentHashMap<>();
+        this.entityMountIds = new ConcurrentHashMap<>();
         this.mountDistanceWarningTime = new ConcurrentHashMap<>();
         
         startCleanupTask();
@@ -139,13 +141,36 @@ public class MountManager {
                 return false;
             }
             
-            if (!isValidMountName(mountName)) {
-                plugin.getLogger().info("DEBUG: Invalid mount name '" + mountName + "' - length: " + mountName.length() + ", min: " + config.getMinNameLength() + ", max: " + config.getMaxNameLength());
-                sendMessage(player, "invalid_mount_name", String.valueOf(config.getMinNameLength()), String.valueOf(config.getMaxNameLength()));
-                return false;
+            // Validate and sanitize mount name using NameValidator
+            String sanitizedMountName = null;
+            if (mountName != null && !mountName.trim().isEmpty()) {
+                sanitizedMountName = plugin.getNameValidator().validateAndSanitizeName(mountName);
+                String validationError = plugin.getNameValidator().getValidationError(mountName, sanitizedMountName);
+                
+                if (validationError != null) {
+                    plugin.getLogger().info("DEBUG: Mount name validation failed: " + validationError + " (original: '" + mountName + "', sanitized: '" + sanitizedMountName + "')");
+                    
+                    // Send appropriate error message based on validation result
+                    if (validationError.contains("empty")) {
+                        sendMessage(player, "name_empty");
+                    } else if (validationError.contains("invalid characters")) {
+                        sendMessage(player, "name_invalid_characters");
+                    } else if (validationError.contains("not allowed")) {
+                        sendMessage(player, "name_blacklisted");
+                    } else if (validationError.contains("between")) {
+                        sendMessage(player, "invalid_mount_name", String.valueOf(config.getMinNameLength()), String.valueOf(config.getMaxNameLength()));
+                    } else {
+                        sendMessage(player, "invalid_mount_name", String.valueOf(config.getMinNameLength()), String.valueOf(config.getMaxNameLength()));
+                    }
+                    return false;
+                }
             }
             
-            if (playerHasMountWithName(player, mountName)) {
+            // Use the sanitized name for further processing
+            final String finalMountName = sanitizedMountName;
+            
+            // Only check for duplicate names if mount has a name
+            if (finalMountName != null && playerHasMountWithName(player, finalMountName)) {
                 sendMessage(player, "mount_name_exists");
                 return false;
             }
@@ -159,19 +184,23 @@ public class MountManager {
                     chestInventoryData = serializer.serializeChestInventory(((InventoryHolder) entity).getInventory());
                 }
                 
-                boolean saved = database.saveMountData(
+                int mountId = database.saveMountData(
                     player.getUniqueId(),
-                    mountName,
+                    finalMountName,
                     mountType.name(),
                     mountDataYaml,
                     chestInventoryData
                 ).get();
                 
-                if (saved) {
-                    tagEntityAsOwnedMount(entity, player, mountName);
-                    trackActiveMount(player, entity, mountName);
+                if (mountId > 0) {
+                    tagEntityAsOwnedMount(entity, player, mountId, finalMountName);
+                    trackActiveMount(player, entity, mountId, finalMountName);
                     
-                    sendMessage(player, "mount_claimed", mountName);
+                    if (finalMountName != null && !finalMountName.trim().isEmpty()) {
+                        sendMessage(player, "mount_claimed", finalMountName);
+                    } else {
+                        sendMessage(player, "mount_tamed_unnamed");
+                    }
                     
                     if (config.playTamingEffects()) {
                         playTamingEffects(entity.getLocation());
@@ -191,7 +220,53 @@ public class MountManager {
         });
     }
     
-    public CompletableFuture<Boolean> summonMount(Player player, String mountName) {
+    private void tagEntityAsOwnedMount(Entity entity, Player player, int mountId, String mountName) {
+        // Tag the entity with metadata to identify it as a SimpleMounts entity
+        entity.getPersistentDataContainer().set(
+            new org.bukkit.NamespacedKey(plugin, "simplemounts_owner"), 
+            org.bukkit.persistence.PersistentDataType.STRING, 
+            player.getUniqueId().toString()
+        );
+        entity.getPersistentDataContainer().set(
+            new org.bukkit.NamespacedKey(plugin, "simplemounts_id"), 
+            org.bukkit.persistence.PersistentDataType.INTEGER, 
+            mountId
+        );
+        if (mountName != null) {
+            entity.getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey(plugin, "simplemounts_name"), 
+                org.bukkit.persistence.PersistentDataType.STRING, 
+                mountName
+            );
+        }
+    }
+    
+    private void trackActiveMount(Player player, Entity entity, int mountId, String mountName) {
+        UUID playerUuid = player.getUniqueId();
+        UUID entityUuid = entity.getUniqueId();
+        
+        // Add to tracking maps
+        playerActiveMounts.computeIfAbsent(playerUuid, k -> ConcurrentHashMap.newKeySet()).add(entityUuid);
+        entityMountIds.put(entityUuid, mountId);
+        if (mountName != null) {
+            entityMountNames.put(entityUuid, mountName);
+        }
+        
+        // Add to database
+        Location loc = entity.getLocation();
+        database.addActiveMount(
+            entityUuid, 
+            playerUuid, 
+            mountId,
+            mountName, 
+            loc.getWorld().getName(), 
+            loc.getX(), 
+            loc.getY(), 
+            loc.getZ()
+        );
+    }
+    
+    public CompletableFuture<Boolean> summonMount(Player player, int mountId) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         
         // Do database operations async
@@ -213,10 +288,12 @@ public class MountManager {
                     return;
                 }
                 
-                MountData mountData = database.getMountData(player.getUniqueId(), mountName).get();
+                MountData mountData = database.getMountData(player.getUniqueId(), mountId).get();
                 if (mountData == null) {
                     plugin.runSync(() -> {
-                        sendMessage(player, "mount_not_found", mountName);
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("id", String.valueOf(mountId));
+                        sendMessage(player, "mount_not_found_with_id", placeholders);
                         future.complete(false);
                     });
                     return;
@@ -244,22 +321,144 @@ public class MountManager {
                         }
                         
                         applyMountAttributes(entity, mountData);
-                        tagEntityAsOwnedMount(entity, player, mountName);
-                        trackActiveMount(player, entity, mountName);
+                        tagEntityAsOwnedMount(entity, player, mountId, mountData.getMountName());
+                        trackActiveMount(player, entity, mountId, mountData.getMountName());
                         
                         // Set custom name on the entity to show mount name
-                        entity.setCustomName(ChatColor.GOLD + mountName);
-                        entity.setCustomNameVisible(true);
+                        if (mountData.hasName()) {
+                            entity.setCustomName(ChatColor.GOLD + mountData.getMountName());
+                            entity.setCustomNameVisible(true);
+                        }
                         
                         // Play summoning effects
                         playSummoningEffects(spawnLocation, player);
                         
                         // Update database async
                         plugin.runAsync(() -> {
-                            database.updateLastAccessed(player.getUniqueId(), mountName);
+                            database.updateLastAccessed(player.getUniqueId(), mountId);
                         });
                         
-                        sendMessage(player, "mount_summoned", mountName);
+                        sendMessage(player, "mount_summoned", mountData.getDisplayName());
+                        future.complete(true);
+                    } catch (Exception e) {
+                        plugin.getLogger().log(Level.SEVERE, "Error spawning mount entity", e);
+                        sendMessage(player, "mount_summon_failed");
+                        future.complete(false);
+                    }
+                });
+                
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Error summoning mount", e);
+                plugin.runSync(() -> {
+                    sendMessage(player, "mount_summon_failed");
+                    future.complete(false);
+                });
+            }
+        });
+        
+        return future;
+    }
+    
+    public CompletableFuture<Boolean> summonMount(Player player, String mountName) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        // Do database operations async
+        plugin.runAsync(() -> {
+            try {
+                if (!hasPermission(player, "simplemounts.summon")) {
+                    plugin.runSync(() -> {
+                        sendMessage(player, "no_permission");
+                        future.complete(false);
+                    });
+                    return;
+                }
+                
+                if (player.getVehicle() != null) {
+                    plugin.runSync(() -> {
+                        sendMessage(player, "already_riding");
+                        future.complete(false);
+                    });
+                    return;
+                }
+                
+                List<MountData> mounts = database.getMountsByName(player.getUniqueId(), mountName).get();
+                if (mounts.isEmpty()) {
+                    plugin.runSync(() -> {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("name", mountName);
+                        sendMessage(player, "mount_not_found", placeholders);
+                        future.complete(false);
+                    });
+                    return;
+                }
+                
+                if (mounts.size() > 1) {
+                    // Multiple mounts with the same name - ask user to specify ID
+                    plugin.runSync(() -> {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("name", mountName);
+                        sendMessage(player, "multiple_mounts_found", placeholders);
+                        
+                        for (MountData mount : mounts) {
+                            Map<String, String> mountPlaceholders = new HashMap<>();
+                            mountPlaceholders.put("id", String.valueOf(mount.getId()));
+                            mountPlaceholders.put("type", mount.getMountTypeEnum().getDisplayName());
+                            mountPlaceholders.put("date", new java.text.SimpleDateFormat("MMM dd, yyyy").format(new java.util.Date(mount.getCreatedAt())));
+                            sendMessage(player, "mount_id_format", mountPlaceholders);
+                        }
+                        
+                        Map<String, String> helpPlaceholders = new HashMap<>();
+                        helpPlaceholders.put("command", "summon");
+                        helpPlaceholders.put("name", mountName);
+                        sendMessage(player, "select_mount_by_id", helpPlaceholders);
+                        future.complete(false);
+                    });
+                    return;
+                }
+                
+                // Single mount found, summon it
+                MountData mountData = mounts.get(0);
+                
+                // Move to main thread for entity operations
+                plugin.runSync(() -> {
+                    try {
+                        if (config.autoDismissExistingMount()) {
+                            dismissPlayerMounts(player);
+                        }
+                        
+                        Location spawnLocation = findSafeSpawnLocation(player, mountData.getMountTypeEnum());
+                        if (spawnLocation == null) {
+                            sendMessage(player, "no_safe_location");
+                            future.complete(false);
+                            return;
+                        }
+                        
+                        Entity entity = spawnMountEntity(spawnLocation, mountData);
+                        if (entity == null) {
+                            sendMessage(player, "mount_spawn_failed");
+                            future.complete(false);
+                            return;
+                        }
+                        
+                        applyMountAttributes(entity, mountData);
+                        tagEntityAsOwnedMount(entity, player, mountData.getId(), mountData.getMountName());
+                        trackActiveMount(player, entity, mountData.getId(), mountData.getMountName());
+                        
+                        // Set custom name on the entity to show mount name
+                        if (mountData.hasName()) {
+                            entity.setCustomName(ChatColor.GOLD + mountData.getMountName());
+                            entity.setCustomNameVisible(true);
+                        }
+                        
+                        // Play summoning effects
+                        playSummoningEffects(spawnLocation, player);
+                        
+                        // Update database async
+                        plugin.runAsync(() -> {
+                            database.updateLastAccessed(player.getUniqueId(), mountData.getId());
+                        });
+                        
+                        sendMessage(player, "mount_summoned", mountData.getDisplayName());
                         future.complete(true);
                         
                     } catch (Exception e) {
@@ -394,6 +593,135 @@ public class MountManager {
         return future;
     }
     
+    public CompletableFuture<Boolean> storeMount(Player player, int mountId) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        plugin.getLogger().info("DEBUG: storeMount by ID called for " + player.getName() + " with mount ID: " + mountId);
+        
+        if (!hasPermission(player, "simplemounts.store")) {
+            plugin.getLogger().info("DEBUG: No permission");
+            sendMessage(player, "no_permission");
+            future.complete(false);
+            return future;
+        }
+        
+        // Find the mount entity by ID
+        plugin.runAsync(() -> {
+            Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
+            plugin.getLogger().info("DEBUG: Active mounts for player: " + (activeMounts != null ? activeMounts.size() : "null"));
+            
+            UUID targetUuid = null;
+            if (activeMounts != null) {
+                for (UUID entityUuid : activeMounts) {
+                    Integer activeMountId = entityMountIds.get(entityUuid);
+                    plugin.getLogger().info("DEBUG: Checking mount UUID " + entityUuid + " with ID: " + activeMountId);
+                    if (mountId == activeMountId) {
+                        targetUuid = entityUuid;
+                        plugin.getLogger().info("DEBUG: Found matching UUID for mount ID " + mountId);
+                        break;
+                    }
+                }
+            }
+            
+            if (targetUuid == null) {
+                plugin.getLogger().info("DEBUG: No matching UUID found for mount ID " + mountId);
+                plugin.runSync(() -> {
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("id", String.valueOf(mountId));
+                    sendMessage(player, "mount_not_found_with_id", placeholders);
+                    future.complete(false);
+                });
+                return;
+            }
+            
+            final UUID finalTargetUuid = targetUuid;
+            
+            // Search for entity on main thread
+            plugin.runSync(() -> {
+                Entity targetMount = null;
+                plugin.getLogger().info("DEBUG: Searching for entity on main thread...");
+                
+                // Direct search through entities
+                for (org.bukkit.World world : plugin.getServer().getWorlds()) {
+                    for (Entity entity : world.getEntities()) {
+                        if (entity.getUniqueId().equals(finalTargetUuid)) {
+                            targetMount = entity;
+                            plugin.getLogger().info("DEBUG: Found target mount entity in world: " + world.getName());
+                            break;
+                        }
+                    }
+                    if (targetMount != null) break;
+                }
+                
+                if (targetMount == null) {
+                    plugin.getLogger().info("DEBUG: Target mount entity not found in any world");
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("id", String.valueOf(mountId));
+                    sendMessage(player, "mount_not_found_with_id", placeholders);
+                    future.complete(false);
+                    return;
+                }
+                
+                final Entity finalTargetMount = targetMount;
+                
+                // Store the mount
+                plugin.runAsync(() -> {
+                    boolean result = storeEntityAsMountById(player, finalTargetMount, mountId);
+                    plugin.getLogger().info("DEBUG: Storage result: " + result);
+                    future.complete(result);
+                });
+            });
+        });
+        
+        return future;
+    }
+    
+    private boolean storeEntityAsMountById(Player player, Entity vehicle, int mountId) {
+        try {
+            plugin.getLogger().info("DEBUG: storeEntityAsMountById called with mount ID: " + mountId);
+            
+            MountType mountType = MountType.fromEntityType(vehicle.getType());
+            MountAttributes attributes = MountAttributes.fromEntity(vehicle);
+            String mountDataYaml = serializer.serializeAttributes(attributes);
+            String chestInventoryData = null;
+            
+            if (mountType.canHaveChest() && vehicle instanceof InventoryHolder) {
+                chestInventoryData = serializer.serializeChestInventory(((InventoryHolder) vehicle).getInventory());
+            }
+            
+            plugin.getLogger().info("DEBUG: About to update database for mount ID: " + mountId);
+            boolean updated = database.updateMountData(
+                mountId,
+                mountType.name(),
+                mountDataYaml,
+                chestInventoryData
+            ).get();
+            
+            plugin.getLogger().info("DEBUG: Database update result: " + updated);
+            
+            if (updated) {
+                untrackActiveMount(player, vehicle);
+                
+                // Play storing effects before removing
+                plugin.runSync(() -> {
+                    playStoringEffects(vehicle.getLocation(), player);
+                    vehicle.remove();
+                });
+                
+                sendMessage(player, "mount_stored");
+                return true;
+            } else {
+                sendMessage(player, "mount_store_failed");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error in storeEntityAsMountById", e);
+            sendMessage(player, "mount_store_failed");
+            return false;
+        }
+    }
+    
     private boolean storeEntityAsMount(Player player, Entity vehicle, String mountName) {
         try {
             plugin.getLogger().info("DEBUG: storeEntityAsMount called with mount: " + mountName);
@@ -407,18 +735,25 @@ public class MountManager {
                 chestInventoryData = serializer.serializeChestInventory(((InventoryHolder) vehicle).getInventory());
             }
             
-            plugin.getLogger().info("DEBUG: About to save to database");
-            boolean saved = database.saveMountData(
-                player.getUniqueId(),
-                mountName,
+            // Get the mount ID from the entity
+            Integer mountId = getMountId(vehicle.getUniqueId());
+            if (mountId == null) {
+                plugin.getLogger().warning("Mount ID not found for entity " + vehicle.getUniqueId());
+                sendMessage(player, "mount_store_failed");
+                return false;
+            }
+            
+            plugin.getLogger().info("DEBUG: About to update database for mount ID: " + mountId);
+            boolean updated = database.updateMountData(
+                mountId,
                 mountType.name(),
                 mountDataYaml,
                 chestInventoryData
             ).get();
             
-            plugin.getLogger().info("DEBUG: Database save result: " + saved);
+            plugin.getLogger().info("DEBUG: Database update result: " + updated);
             
-            if (saved) {
+            if (updated) {
                 untrackActiveMount(player, vehicle);
                 
                 // Play storing effects before removing
@@ -466,7 +801,7 @@ public class MountManager {
         return mountName;
     }
     
-    public CompletableFuture<Boolean> releaseMount(Player player, String mountName) {
+    public CompletableFuture<Boolean> releaseMount(Player player, int mountId) {
         return CompletableFuture.supplyAsync(() -> {
             if (!hasPermission(player, "simplemounts.release")) {
                 sendMessage(player, "no_permission");
@@ -474,26 +809,33 @@ public class MountManager {
             }
             
             try {
-                MountData mountData = database.getMountData(player.getUniqueId(), mountName).get();
+                MountData mountData = database.getMountData(player.getUniqueId(), mountId).get();
                 if (mountData == null) {
-                    sendMessage(player, "mount_not_found", mountName);
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("id", String.valueOf(mountId));
+                    sendMessage(player, "mount_not_found_with_id", placeholders);
                     return false;
                 }
                 
+                // Remove active mount if it exists
                 Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
                 if (activeMounts != null) {
                     for (UUID entityUuid : activeMounts) {
-                        Entity entity = plugin.getServer().getEntity(entityUuid);
-                        if (entity != null && entityMountNames.get(entityUuid).equals(mountName)) {
-                            entity.remove();
+                        Integer activeMountId = entityMountIds.get(entityUuid);
+                        if (activeMountId != null && activeMountId == mountId) {
+                            Entity entity = plugin.getServer().getEntity(entityUuid);
+                            if (entity != null) {
+                                entity.remove();
+                            }
+                            untrackActiveMount(player, entityUuid);
                             break;
                         }
                     }
                 }
                 
-                boolean deleted = database.deleteMountData(player.getUniqueId(), mountName).get();
+                boolean deleted = database.deleteMountData(player.getUniqueId(), mountId).get();
                 if (deleted) {
-                    sendMessage(player, "mount_released", mountName);
+                    sendMessage(player, "mount_released", mountData.getDisplayName());
                     return true;
                 } else {
                     sendMessage(player, "mount_release_failed");
@@ -512,8 +854,12 @@ public class MountManager {
         return database.getPlayerMounts(player.getUniqueId());
     }
     
-    public CompletableFuture<MountData> getMountData(Player player, String mountName) {
-        return database.getMountData(player.getUniqueId(), mountName);
+    public CompletableFuture<List<MountData>> getMountsByName(Player player, String mountName) {
+        return database.getMountsByName(player.getUniqueId(), mountName);
+    }
+    
+    public CompletableFuture<MountData> getMountData(Player player, int mountId) {
+        return database.getMountData(player.getUniqueId(), mountId);
     }
     
     public void dismissPlayerMounts(Player player) {
@@ -610,10 +956,16 @@ public class MountManager {
                 chestInventoryData = serializer.serializeChestInventory(((InventoryHolder) entity).getInventory());
             }
             
-            // Perform database operation synchronously (this might block but it's necessary during logout)
-            boolean saved = database.saveMountData(
-                player.getUniqueId(),
-                mountName,
+            // Get the mount ID from the entity
+            Integer mountId = getMountId(entity.getUniqueId());
+            if (mountId == null) {
+                plugin.getLogger().warning("Mount ID not found for entity " + entity.getUniqueId());
+                return false;
+            }
+            
+            // Update existing mount data in database
+            boolean saved = database.updateMountData(
+                mountId,
                 mountType.name(),
                 mountDataYaml,
                 chestInventoryData
@@ -666,8 +1018,8 @@ public class MountManager {
     
     private boolean playerHasMountWithName(Player player, String mountName) {
         try {
-            MountData existing = database.getMountData(player.getUniqueId(), mountName).get();
-            return existing != null;
+            List<MountData> existing = database.getMountsByName(player.getUniqueId(), mountName).get();
+            return !existing.isEmpty();
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Error checking mount name", e);
             return false;
@@ -753,25 +1105,16 @@ public class MountManager {
     }
     
     private void tagEntityAsOwnedMount(Entity entity, Player owner, String mountName) {
-        entity.setMetadata("simplemounts.owner", new org.bukkit.metadata.FixedMetadataValue(plugin, owner.getUniqueId().toString()));
-        entity.setMetadata("simplemounts.name", new org.bukkit.metadata.FixedMetadataValue(plugin, mountName));
-        entity.setMetadata("simplemounts.claimed", new org.bukkit.metadata.FixedMetadataValue(plugin, System.currentTimeMillis()));
+        // This is the legacy method - redirect to ID-based version
+        int tempId = 0; // Temporary ID for legacy calls
+        tagEntityAsOwnedMount(entity, owner, tempId, mountName);
     }
     
     private void trackActiveMount(Player player, Entity entity, String mountName) {
-        playerActiveMounts.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>())
-                          .add(entity.getUniqueId());
-        entityMountNames.put(entity.getUniqueId(), mountName);
-        
-        database.addActiveMount(
-            entity.getUniqueId(),
-            player.getUniqueId(),
-            mountName,
-            entity.getWorld().getName(),
-            entity.getLocation().getX(),
-            entity.getLocation().getY(),
-            entity.getLocation().getZ()
-        );
+        // This is the legacy method - redirect to ID-based version
+        // For backwards compatibility, we'll generate a temporary ID
+        int tempId = 0; // Temporary ID for legacy calls
+        trackActiveMount(player, entity, tempId, mountName);
     }
     
     private void untrackActiveMount(Player player, Entity entity) {
@@ -788,17 +1131,22 @@ public class MountManager {
         }
         
         entityMountNames.remove(entityUuid);
+        entityMountIds.remove(entityUuid);
         database.removeActiveMount(entityUuid);
     }
     
     private boolean isPlayerOwnedMount(Entity entity, Player player) {
-        return entity.hasMetadata("simplemounts.owner") &&
-               entity.getMetadata("simplemounts.owner").get(0).asString().equals(player.getUniqueId().toString());
+        org.bukkit.NamespacedKey ownerKey = new org.bukkit.NamespacedKey(plugin, "simplemounts_owner");
+        String ownerUuid = entity.getPersistentDataContainer().get(ownerKey, org.bukkit.persistence.PersistentDataType.STRING);
+        
+        return ownerUuid != null && ownerUuid.equals(player.getUniqueId().toString());
     }
     
     private boolean isEntityOwnedByOtherPlayer(Entity entity, Player player) {
-        if (entity.hasMetadata("simplemounts.owner")) {
-            String ownerUuid = entity.getMetadata("simplemounts.owner").get(0).asString();
+        org.bukkit.NamespacedKey ownerKey = new org.bukkit.NamespacedKey(plugin, "simplemounts_owner");
+        String ownerUuid = entity.getPersistentDataContainer().get(ownerKey, org.bukkit.persistence.PersistentDataType.STRING);
+        
+        if (ownerUuid != null) {
             return !ownerUuid.equals(player.getUniqueId().toString());
         }
         return false;
@@ -851,20 +1199,30 @@ public class MountManager {
     }
     
     private void sendMessage(Player player, String messageKey, String... replacements) {
+        Map<String, String> placeholders = new HashMap<>();
+        if (replacements.length > 0) {
+            placeholders.put("name", replacements[0]);
+            placeholders.put("limit", replacements[0]);
+            placeholders.put("min", replacements[0]);
+            if (replacements.length > 1) {
+                placeholders.put("limit", replacements[1]);
+                placeholders.put("max", replacements[1]);
+                placeholders.put("grace", replacements[1]);
+                if (replacements.length > 2) {
+                    placeholders.put("type", replacements[2]);
+                }
+            }
+        }
+        sendMessage(player, messageKey, placeholders);
+    }
+    
+    private void sendMessage(Player player, String messageKey, Map<String, String> placeholders) {
         String message = config.getMessage(messageKey);
         String prefix = config.getMessagePrefix();
         
-        if (replacements.length > 0) {
-            message = message.replace("{name}", replacements[0]);
-            message = message.replace("{limit}", replacements[0]);
-            message = message.replace("{min}", replacements[0]);
-            if (replacements.length > 1) {
-                message = message.replace("{limit}", replacements[1]);
-                message = message.replace("{max}", replacements[1]);
-                message = message.replace("{grace}", replacements[1]);
-                if (replacements.length > 2) {
-                    message = message.replace("{type}", replacements[2]);
-                }
+        if (placeholders != null) {
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                message = message.replace("{" + entry.getKey() + "}", entry.getValue());
             }
         }
         
@@ -879,11 +1237,19 @@ public class MountManager {
         return entityMountNames.get(entityUuid);
     }
     
+    public Integer getMountId(UUID entityUuid) {
+        return entityMountIds.get(entityUuid);
+    }
+    
     public boolean isActiveMount(UUID entityUuid) {
         return entityUuid != null && entityMountNames.containsKey(entityUuid);
     }
     
     public boolean isMountActive(Player player, String mountName) {
+        if (mountName == null) {
+            return false; // Unnamed mounts can't be checked by name
+        }
+        
         Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
         if (activeMounts == null) {
             return false;
@@ -893,7 +1259,20 @@ public class MountManager {
             .anyMatch(uuid -> mountName.equals(entityMountNames.get(uuid)));
     }
     
-    public CompletableFuture<Boolean> renameMount(Player player, String oldName, String newName) {
+    public boolean isMountActive(Player player, int mountId) {
+        Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
+        if (activeMounts == null) {
+            return false;
+        }
+        
+        return activeMounts.stream()
+            .anyMatch(uuid -> {
+                Integer entityMountId = entityMountIds.get(uuid);
+                return entityMountId != null && entityMountId == mountId;
+            });
+    }
+    
+    public CompletableFuture<Boolean> renameMount(Player player, int mountId, String newName) {
         return CompletableFuture.supplyAsync(() -> {
             if (!hasPermission(player, "simplemounts.rename")) {
                 sendMessage(player, "no_permission");
@@ -901,41 +1280,62 @@ public class MountManager {
             }
             
             try {
-                MountData mountData = database.getMountData(player.getUniqueId(), oldName).get();
+                MountData mountData = database.getMountData(player.getUniqueId(), mountId).get();
                 if (mountData == null) {
-                    sendMessage(player, "mount_not_found", oldName);
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("id", String.valueOf(mountId));
+                    sendMessage(player, "mount_not_found_with_id", placeholders);
                     return false;
                 }
                 
-                // Check if new name already exists
-                MountData existingMount = database.getMountData(player.getUniqueId(), newName).get();
-                if (existingMount != null) {
-                    player.sendMessage(ChatColor.RED + "A mount with the name '" + newName + "' already exists!");
-                    return false;
-                }
-                
-                // Delete old record and insert new one with new name
-                boolean deleted = database.deleteMountData(player.getUniqueId(), oldName).get();
-                if (deleted) {
-                    boolean saved = database.saveMountData(
-                        mountData.getPlayerUuid(),
-                        newName, // New name
-                        mountData.getMountType(),
-                        mountData.getMountDataYaml(),
-                        mountData.getChestInventoryData()
-                    ).get();
-                    if (saved) {
-                        player.sendMessage(ChatColor.GREEN + "Mount renamed from '" + oldName + "' to '" + newName + "'!");
-                        return true;
+                boolean updated = database.updateMountName(player.getUniqueId(), mountId, newName).get();
+                if (updated) {
+                    // Update active mount name if it's currently active
+                    Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
+                    if (activeMounts != null) {
+                        for (UUID entityUuid : activeMounts) {
+                            Integer activeMountId = entityMountIds.get(entityUuid);
+                            if (activeMountId != null && activeMountId == mountId) {
+                                if (newName != null && !newName.trim().isEmpty()) {
+                                    entityMountNames.put(entityUuid, newName);
+                                } else {
+                                    entityMountNames.remove(entityUuid);
+                                }
+                                
+                                // Update entity custom name on main thread
+                                final UUID finalEntityUuid = entityUuid;
+                                final String finalNewName = newName;
+                                plugin.runSync(() -> {
+                                    Entity entity = plugin.getServer().getEntity(finalEntityUuid);
+                                    if (entity != null) {
+                                        if (finalNewName != null && !finalNewName.trim().isEmpty()) {
+                                            entity.setCustomName(ChatColor.GOLD + finalNewName);
+                                            entity.setCustomNameVisible(true);
+                                        } else {
+                                            entity.setCustomName(null);
+                                            entity.setCustomNameVisible(false);
+                                        }
+                                    }
+                                });
+                                break;
+                            }
+                        }
                     }
+                    
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("old_name", mountData.getDisplayName());
+                    placeholders.put("new_name", newName != null && !newName.trim().isEmpty() ? 
+                        newName : config.getMessage("unnamed_mount_display").replace("{type}", mountData.getMountTypeEnum().getDisplayName()).replace("{id}", String.valueOf(mountId)));
+                    sendMessage(player, "mount_renamed", placeholders);
+                    return true;
+                } else {
+                    sendMessage(player, "mount_rename_failed");
+                    return false;
                 }
-                
-                player.sendMessage(ChatColor.RED + "Failed to rename mount. Please try again.");
-                return false;
                 
             } catch (Exception e) {
                 plugin.getLogger().log(Level.SEVERE, "Error renaming mount", e);
-                player.sendMessage(ChatColor.RED + "An error occurred while renaming the mount.");
+                sendMessage(player, "mount_rename_failed");
                 return false;
             }
         });

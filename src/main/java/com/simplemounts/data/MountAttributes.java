@@ -86,13 +86,23 @@ public class MountAttributes {
         if (entity instanceof Strider) {
             Strider strider = (Strider) entity;
             attributes.set("shivering", strider.isShivering());
-            // Check if strider has a saddle - use reflection to support different Spigot versions
+            // Check if strider has a saddle - improved reflection for Spigot 1.21.5
             try {
                 java.lang.reflect.Method isSaddledMethod = strider.getClass().getMethod("isSaddled");
                 boolean saddled = (Boolean) isSaddledMethod.invoke(strider);
                 attributes.set("saddled", saddled);
+            } catch (NoSuchMethodException e) {
+                // Try alternative method names
+                try {
+                    java.lang.reflect.Method hasSaddleMethod = strider.getClass().getMethod("hasSaddle");
+                    boolean saddled = (Boolean) hasSaddleMethod.invoke(strider);
+                    attributes.set("saddled", saddled);
+                } catch (Exception e2) {
+                    // Method not available, default to false
+                    attributes.set("saddled", false);
+                }
             } catch (Exception e) {
-                // Method not available in this Spigot version, ignore
+                // Method failed, default to false
                 attributes.set("saddled", false);
             }
         }
@@ -232,13 +242,21 @@ public class MountAttributes {
                 strider.setShivering(getBoolean("shivering"));
             }
             
-            // Restore saddled state - use reflection to support different Spigot versions
+            // Restore saddled state - improved reflection for Spigot 1.21.5
             if (has("saddled")) {
                 try {
                     java.lang.reflect.Method setSaddledMethod = strider.getClass().getMethod("setSaddled", boolean.class);
                     setSaddledMethod.invoke(strider, getBoolean("saddled"));
+                } catch (NoSuchMethodException e) {
+                    // Try alternative method names
+                    try {
+                        java.lang.reflect.Method setSaddleMethod = strider.getClass().getMethod("setSaddle", boolean.class);
+                        setSaddleMethod.invoke(strider, getBoolean("saddled"));
+                    } catch (Exception e2) {
+                        // Method not available, ignore
+                    }
                 } catch (Exception e) {
-                    // Method not available in this Spigot version, ignore
+                    // Method failed, ignore
                 }
             }
         }

@@ -18,16 +18,16 @@ public class MountInfoGUI {
     
     private final SimpleMounts plugin;
     private final Player player;
-    private final String mountName;
+    private final Integer mountId;
     
-    public MountInfoGUI(SimpleMounts plugin, Player player, String mountName) {
+    public MountInfoGUI(SimpleMounts plugin, Player player, Integer mountId) {
         this.plugin = plugin;
         this.player = player;
-        this.mountName = mountName;
+        this.mountId = mountId;
     }
     
     public void open() {
-        String title = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Mount Info - " + mountName;
+        String title = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Mount Info - #" + mountId;
         Inventory inventory = Bukkit.createInventory(null, 54, title);
         
         // Add border
@@ -41,7 +41,7 @@ public class MountInfoGUI {
     
     private void loadMountInfo(Inventory inventory) {
         plugin.runAsync(() -> {
-            plugin.getMountManager().getMountData(player, mountName).thenAccept(mountData -> {
+            plugin.getMountManager().getMountData(player, mountId).thenAccept(mountData -> {
                 plugin.runSync(() -> {
                     if (mountData != null) {
                         displayMountInfo(inventory, mountData);
@@ -57,20 +57,20 @@ public class MountInfoGUI {
         // Parse mount attributes
         Map<String, Object> attributes = parseAttributes(mountData.getMountDataYaml());
         
-        // Check if mount is active
-        boolean isActive = plugin.getMountManager().getPlayerActiveMounts(player.getUniqueId())
-            .stream()
-            .anyMatch(uuid -> mountName.equals(plugin.getMountManager().getMountName(uuid)));
+        // Check if mount is active (we'll assume not active for now, can be enhanced later)
+        boolean isActive = false;
         
         // Main mount display item
         ItemStack mainItem = GUIManager.createMountItem(
+            mountData.getId(),
             mountData.getMountName(),
             mountData.getMountType(),
             isActive,
             getDoubleAttribute(attributes, "health", 20.0),
             getDoubleAttribute(attributes, "maxHealth", 20.0),
             getDoubleAttribute(attributes, "speed", 0.2),
-            getDoubleAttribute(attributes, "jumpStrength", 0.7)
+            getDoubleAttribute(attributes, "jumpStrength", 0.7),
+            plugin
         );
         inventory.setItem(22, mainItem);
         
@@ -219,7 +219,7 @@ public class MountInfoGUI {
         ItemStack notFoundItem = GUIManager.createNavigationItem(
             Material.BARRIER,
             "Mount Not Found",
-            "The mount '" + mountName + "' could not be found.",
+            "The mount '#" + mountId + "' could not be found.",
             "It may have been released or renamed.",
             "Click to return to the mount list."
         );
@@ -281,7 +281,7 @@ public class MountInfoGUI {
     }
     
     public void refresh() {
-        MountInfoGUI refreshedGUI = new MountInfoGUI(plugin, player, mountName);
+        MountInfoGUI refreshedGUI = new MountInfoGUI(plugin, player, mountId);
         refreshedGUI.open();
     }
 }

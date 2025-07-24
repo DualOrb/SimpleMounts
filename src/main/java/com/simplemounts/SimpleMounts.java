@@ -13,6 +13,7 @@ import com.simplemounts.listeners.ItemInteractionListener;
 import com.simplemounts.listeners.MountInteractionListener;
 import com.simplemounts.listeners.PlayerListener;
 import com.simplemounts.recipes.RecipeManager;
+import com.simplemounts.util.NameValidator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -28,6 +29,7 @@ public final class SimpleMounts extends JavaPlugin {
     private ShutdownHandler shutdownHandler;
     private GUIManager guiManager;
     private RecipeManager recipeManager;
+    private NameValidator nameValidator;
     
     @Override
     public void onEnable() {
@@ -92,6 +94,7 @@ public final class SimpleMounts extends JavaPlugin {
         shutdownHandler = new ShutdownHandler(this);
         guiManager = new GUIManager(this);
         recipeManager = new RecipeManager(this);
+        nameValidator = new NameValidator(this);
         
         if (!databaseManager.initialize()) {
             throw new RuntimeException("Failed to initialize database");
@@ -144,6 +147,9 @@ public final class SimpleMounts extends JavaPlugin {
     public void reloadConfiguration() {
         try {
             configManager.reloadConfig();
+            if (nameValidator != null) {
+                nameValidator.reloadBlacklist();
+            }
             getLogger().info("Configuration reloaded successfully");
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Failed to reload configuration", e);
@@ -176,6 +182,10 @@ public final class SimpleMounts extends JavaPlugin {
     
     public RecipeManager getRecipeManager() {
         return recipeManager;
+    }
+    
+    public NameValidator getNameValidator() {
+        return nameValidator;
     }
     
     public void runAsync(Runnable task) {
