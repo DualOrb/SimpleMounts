@@ -6,6 +6,7 @@ import com.simplemounts.data.MountType;
 import com.simplemounts.data.TamingItem;
 import com.simplemounts.util.RideableDetector;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,65 +27,113 @@ public class CustomTamingListener implements Listener {
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-        if (!plugin.getConfigManager().isCustomTamingEnabled()) {
-            return;
-        }
-        
         Player player = event.getPlayer();
         Entity entity = event.getRightClicked();
         ItemStack item = player.getInventory().getItemInMainHand();
         
+        // Debug logging
+        plugin.getLogger().info("DEBUG: Player " + player.getName() + " right-clicked entity " + entity.getType() + " with item " + (item != null ? item.getType() : "AIR"));
+        
+        if (!plugin.getConfigManager().isCustomTamingEnabled()) {
+            plugin.getLogger().info("DEBUG: Custom taming is disabled");
+            return;
+        }
+        
         if (!RideableDetector.isRideable(entity)) {
+            plugin.getLogger().info("DEBUG: Entity " + entity.getType() + " is not rideable");
             return;
         }
         
         MountType mountType = MountType.fromEntityType(entity.getType());
         if (!plugin.getConfigManager().isMountTypeEnabled(mountType.name())) {
+            plugin.getLogger().info("DEBUG: Mount type " + mountType.name() + " is not enabled");
             return;
         }
         
         if (!player.hasPermission("simplemounts.claim")) {
+            plugin.getLogger().info("DEBUG: Player " + player.getName() + " lacks permission simplemounts.claim");
             return;
         }
         
-        if (isEntityAlreadyOwned(entity)) {
-            sendMessage(player, "entity_protected");
-            return;
-        }
+        // Allow claiming already tamed entities - we'll override the ownership
+        // if (isEntityAlreadyOwned(entity)) {
+        //     plugin.getLogger().info("DEBUG: Entity is already owned");
+        //     sendMessage(player, "entity_protected");
+        //     return;
+        // }
         
         if (isProtectedByOtherPlugins(entity, player)) {
+            plugin.getLogger().info("DEBUG: Entity is protected by other plugins");
             sendMessage(player, "entity_protected");
             return;
         }
         
         TamingItem tamingItem = plugin.getConfigManager().getTamingItem(mountType.name());
+        plugin.getLogger().info("DEBUG: Got taming item for " + mountType.name() + ": " + tamingItem.getMaterial());
+        
         if (!tamingItem.matches(item)) {
+            plugin.getLogger().info("DEBUG: Type-specific taming item doesn't match, trying default");
             tamingItem = plugin.getConfigManager().getTamingItem("default");
+            plugin.getLogger().info("DEBUG: Got default taming item: " + tamingItem.getMaterial());
+            
             if (!tamingItem.matches(item)) {
+                plugin.getLogger().info("DEBUG: Default taming item doesn't match either. Item: " + (item != null ? item.getType() + " with name: " + (item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : "no name") : "null"));
                 return;
             }
         }
         
         if (plugin.getConfigManager().requireEmptyHand() && 
             player.getInventory().getItemInOffHand().getType() != org.bukkit.Material.AIR) {
+            plugin.getLogger().info("DEBUG: Player needs empty off-hand");
             sendMessage(player, "require_empty_hand");
             return;
         }
         
+        plugin.getLogger().info("DEBUG: All checks passed, claiming mount!");
         event.setCancelled(true);
         
         if (Math.random() * 100 > plugin.getConfigManager().getTamingSuccessChance()) {
+            plugin.getLogger().info("DEBUG: Taming failed due to chance");
             sendMessage(player, "taming_failed");
             return;
         }
         
         String mountName = generateMountName(mountType);
+        plugin.getLogger().info("DEBUG: Generated mount name: '" + mountName + "' (length: " + mountName.length() + ")");
+        final TamingItem finalTamingItem = tamingItem; // Make it final for lambda
         
         plugin.runAsync(() -> {
             mountManager.claimMount(player, entity, mountName).thenAccept(success -> {
-                if (success && tamingItem.isConsumeOnUse()) {
+                plugin.getLogger().info("DEBUG: Mount claim result: " + success);
+                if (success) {
                     plugin.runSync(() -> {
-                        consumeItem(player, item);
+                        // Play taming effects
+                        playTamingEffects(entity.getLocation(), player);
+                        
+                        // Consume taming item if configured
+                        if (finalTamingItem.isConsumeOnUse()) {
+                            consumeItem(player, item);
+                        }
+                        
+                        // Auto-store the mount after claiming
+                        plugin.runAsync(() -> {
+                            try {
+                                Thread.sleep(500); // Small delay to ensure claim is processed
+                                mountManager.storeMount(player, mountName).thenAccept(stored -> {
+                                    if (stored) {
+                                        plugin.runSync(() -> {
+                                            sendMessage(player, "mount_claimed_and_stored", mountName);
+                                        });
+                                    } else {
+                                        plugin.runSync(() -> {
+                                            sendMessage(player, "mount_claimed", mountName);
+                                        });
+                                    }
+                                });
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        });
                     });
                 }
             });
@@ -140,7 +189,40 @@ public class CustomTamingListener implements Listener {
     
     private String generateMountName(MountType mountType) {
         String baseName = mountType.getDisplayName().toLowerCase();
-        return baseName + "_" + System.currentTimeMillis();
+        // Use only last 4 digits of timestamp to keep name shorter
+        long timestamp = System.currentTimeMillis();
+        String shortTimestamp = String.valueOf(timestamp % 10000);
+        String mountName = baseName + "_" + shortTimestamp;
+        
+        // Ensure it fits within config limits
+        int maxLength = plugin.getConfigManager().getMaxNameLength();
+        if (mountName.length() > maxLength) {
+            // Truncate base name if needed
+            int availableLength = maxLength - shortTimestamp.length() - 1; // -1 for underscore
+            if (availableLength > 0) {
+                baseName = baseName.substring(0, Math.min(baseName.length(), availableLength));
+                mountName = baseName + "_" + shortTimestamp;
+            } else {
+                // If still too long, just use short timestamp
+                mountName = "mount_" + shortTimestamp;
+            }
+        }
+        
+        return mountName;
+    }
+    
+    private void playTamingEffects(Location location, Player player) {
+        if (!plugin.getConfigManager().playTamingEffects()) {
+            return;
+        }
+        
+        // Play particles
+        location.getWorld().spawnParticle(org.bukkit.Particle.HEART, location.clone().add(0, 1, 0), 15, 1.0, 1.0, 1.0, 0.1);
+        location.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, location.clone().add(0, 0.5, 0), 10, 0.5, 0.5, 0.5, 0.1);
+        
+        // Play sounds
+        player.playSound(location, org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        player.playSound(location, org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
     
     private void sendMessage(Player player, String messageKey, String... replacements) {

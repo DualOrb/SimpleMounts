@@ -105,7 +105,7 @@ public class InventoryListener implements Listener {
     private Entity getEntityFromInventory(Inventory inventory) {
         if (inventory instanceof HorseInventory) {
             HorseInventory horseInventory = (HorseInventory) inventory;
-            return horseInventory.getHolder();
+            return (Entity) horseInventory.getHolder();
         }
         
         // Try to find the entity by checking all entities in the world

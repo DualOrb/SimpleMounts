@@ -97,6 +97,13 @@ public class TamingItem {
             return customModelData == null && (name == null || name.isEmpty()) && lore.isEmpty();
         }
         
+        // Debug logging
+        System.out.println("DEBUG TamingItem.matches() - Expected: " + this.toString());
+        System.out.println("DEBUG TamingItem.matches() - Item: " + item.getType() + 
+            " name: " + (meta.hasDisplayName() ? meta.getDisplayName() : "none") +
+            " customModelData: " + (meta.hasCustomModelData() ? meta.getCustomModelData() : "none") +
+            " lore: " + (meta.hasLore() ? meta.getLore() : "none"));
+        
         if (customModelData != null) {
             if (!meta.hasCustomModelData() || meta.getCustomModelData() != customModelData) {
                 return false;
@@ -108,6 +115,9 @@ public class TamingItem {
             if (!meta.hasDisplayName() || !meta.getDisplayName().equals(expectedName)) {
                 return false;
             }
+        } else if (meta.hasDisplayName()) {
+            // If taming item has no name configured but item has a display name, it doesn't match
+            return false;
         }
         
         if (!lore.isEmpty()) {

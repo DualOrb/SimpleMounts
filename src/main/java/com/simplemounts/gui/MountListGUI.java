@@ -32,51 +32,58 @@ public class MountListGUI {
     }
     
     public void open() {
-        String title = ChatColor.GOLD + "" + ChatColor.BOLD + "Mount Manager";
-        if (page > 0) {
-            title += " - Page " + (page + 1);
+        // Load mounts asynchronously to get count for title
+        plugin.runAsync(() -> {
+            plugin.getMountManager().getPlayerMounts(player).thenAccept(mounts -> {
+                plugin.runSync(() -> {
+                    // Get mount limit for this player
+                    int maxMounts = getPlayerMountLimit();
+                    int currentMounts = mounts.size();
+                    
+                    // Create title with mount count
+                    String title = ChatColor.GOLD + "" + ChatColor.BOLD + "Mounts " + 
+                                  ChatColor.WHITE + "(" + currentMounts + "/" + maxMounts + ")";
+                    if (page > 0) {
+                        title += ChatColor.GOLD + " - P" + (page + 1);
+                    }
+                    
+                    Inventory inventory = Bukkit.createInventory(null, 54, title);
+                    
+                    // Add border
+                    GUIManager.addBorder(inventory);
+                    
+                    // Add player head and navigation items
+                    addNavigationItems(inventory);
+                    
+                    // Display the loaded mounts
+                    displayMounts(inventory, mounts);
+                    
+                    player.openInventory(inventory);
+                });
+            });
+        });
+    }
+    
+    private int getPlayerMountLimit() {
+        // Check for unlimited permission
+        if (player.hasPermission("simplemounts.unlimited")) {
+            return 999;
         }
         
-        Inventory inventory = Bukkit.createInventory(null, 54, title);
+        // Check for specific limit permissions (highest takes precedence)
+        if (player.hasPermission("simplemounts.limit.100")) return 100;
+        if (player.hasPermission("simplemounts.limit.50")) return 50;
+        if (player.hasPermission("simplemounts.limit.25")) return 25;
+        if (player.hasPermission("simplemounts.limit.10")) return 10;
         
-        // Add border
-        GUIManager.addBorder(inventory);
-        
-        // Add navigation items
-        addNavigationItems(inventory);
-        
-        // Load and display mounts
-        loadMounts(inventory);
-        
-        player.openInventory(inventory);
+        // Default limit from config
+        return plugin.getConfigManager().getDefaultMountLimit();
     }
     
     private void addNavigationItems(Inventory inventory) {
-        // Close button
-        ItemStack closeButton = GUIManager.createNavigationItem(
-            Material.BARRIER, 
-            "Close", 
-            "Click to close the mount manager"
-        );
-        inventory.setItem(49, closeButton);
-        
-        // Help button
-        ItemStack helpButton = GUIManager.createNavigationItem(
-            Material.BOOK,
-            "Help",
-            "Left-click a mount to summon/store",
-            "Right-click a mount for more info",
-            "Use the whistle to open this GUI"
-        );
-        inventory.setItem(45, helpButton);
-        
-        // Refresh button
-        ItemStack refreshButton = GUIManager.createNavigationItem(
-            Material.LIME_DYE,
-            "Refresh",
-            "Click to refresh the mount list"
-        );
-        inventory.setItem(53, refreshButton);
+        // Player head in center bottom
+        ItemStack playerHead = GUIManager.createPlayerHead(player);
+        inventory.setItem(49, playerHead);
         
         // Previous page (if applicable)
         if (page > 0) {
@@ -89,15 +96,6 @@ public class MountListGUI {
         }
     }
     
-    private void loadMounts(Inventory inventory) {
-        plugin.runAsync(() -> {
-            plugin.getMountManager().getPlayerMounts(player).thenAccept(mounts -> {
-                plugin.runSync(() -> {
-                    displayMounts(inventory, mounts);
-                });
-            });
-        });
-    }
     
     private void displayMounts(Inventory inventory, List<MountData> mounts) {
         if (mounts.isEmpty()) {
@@ -149,13 +147,7 @@ public class MountListGUI {
             Map<String, Object> attributes = parseAttributes(mountData.getMountDataYaml());
             
             // Check if mount is active
-            boolean isActive = plugin.getMountManager().isActiveMount(
-                plugin.getMountManager().getPlayerActiveMounts(player.getUniqueId())
-                    .stream()
-                    .filter(uuid -> mountData.getMountName().equals(plugin.getMountManager().getMountName(uuid)))
-                    .findFirst()
-                    .orElse(null)
-            );
+            boolean isActive = plugin.getMountManager().isMountActive(player, mountData.getMountName());
             
             // Create mount item
             ItemStack mountItem = GUIManager.createMountItem(
@@ -172,14 +164,15 @@ public class MountListGUI {
             slot++;
         }
         
-        // Add mount count info
-        ItemStack countInfo = GUIManager.createNavigationItem(
-            Material.PAPER,
-            "Mount Count",
-            "Total Mounts: " + mounts.size(),
-            "Page: " + (page + 1) + "/" + ((mounts.size() - 1) / itemsPerPage + 1)
-        );
-        inventory.setItem(47, countInfo);
+        // Add page info (only if multiple pages)
+        if (mounts.size() > itemsPerPage) {
+            ItemStack pageInfo = GUIManager.createNavigationItem(
+                Material.PAPER,
+                "Page Info",
+                "Page: " + (page + 1) + "/" + ((mounts.size() - 1) / itemsPerPage + 1)
+            );
+            inventory.setItem(47, pageInfo);
+        }
     }
     
     private Map<String, Object> parseAttributes(String yamlData) {

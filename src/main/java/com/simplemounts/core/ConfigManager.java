@@ -360,6 +360,10 @@ public class ConfigManager {
         return config.getBoolean("debug", false);
     }
     
+    public int getDefaultMountLimit() {
+        return config.getInt("limits.default_max_mounts", 5);
+    }
+    
     public FileConfiguration getConfig() {
         return config;
     }

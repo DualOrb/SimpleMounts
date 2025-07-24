@@ -24,7 +24,7 @@ public class MountWhistle {
     }
     
     public ItemStack createWhistle() {
-        ItemStack whistle = new ItemStack(Material.ECHO_SHARD);
+        ItemStack whistle = new ItemStack(Material.GOAT_HORN);
         ItemMeta meta = whistle.getItemMeta();
         
         if (meta != null) {
@@ -33,13 +33,16 @@ public class MountWhistle {
             
             // Set lore
             List<String> lore = Arrays.asList(
-                ChatColor.GRAY + "A magical whistle that calls forth",
-                ChatColor.GRAY + "your trusted mounts from storage.",
+                ChatColor.GRAY + "A magical horn that summons",
+                ChatColor.GRAY + "your trusted mounts to your side.",
                 "",
                 ChatColor.YELLOW + "Right-click to open Mount Manager",
-                ChatColor.YELLOW + "Left-click to quick-summon last mount",
+                ChatColor.GRAY + "Select any mount to summon or store it",
                 "",
-                ChatColor.DARK_GRAY + "Crafted with care for mount enthusiasts"
+                ChatColor.AQUA + "✦ One mount active at a time",
+                ChatColor.AQUA + "✦ Auto-stores current when switching",
+                "",
+                ChatColor.DARK_GRAY + "Enchanted for mount enthusiasts"
             );
             meta.setLore(lore);
             
@@ -57,7 +60,7 @@ public class MountWhistle {
     }
     
     public boolean isMountWhistle(ItemStack item) {
-        if (item == null || item.getType() != Material.ECHO_SHARD) {
+        if (item == null || item.getType() != Material.GOAT_HORN) {
             return false;
         }
         
@@ -70,34 +73,13 @@ public class MountWhistle {
         return container.has(whistleKey, PersistentDataType.STRING);
     }
     
-    public void handleWhistleUse(Player player, ItemStack whistle, boolean isRightClick) {
+    public void handleWhistleUse(Player player, ItemStack whistle) {
         if (!isMountWhistle(whistle)) {
             return;
         }
         
-        if (isRightClick) {
-            // Open mount manager GUI
-            plugin.getGUIManager().openMountGUI(player);
-        } else {
-            // Quick-summon last used mount
-            plugin.runAsync(() -> {
-                plugin.getMountManager().getPlayerMounts(player).thenAccept(mounts -> {
-                    if (mounts.isEmpty()) {
-                        player.sendMessage(ChatColor.RED + "You don't have any stored mounts!");
-                        return;
-                    }
-                    
-                    // Find the most recently accessed mount
-                    var lastMount = mounts.stream()
-                        .max((m1, m2) -> Long.compare(m1.getLastAccessed(), m2.getLastAccessed()))
-                        .orElse(null);
-                    
-                    if (lastMount != null) {
-                        plugin.getMountManager().summonMount(player, lastMount.getMountName());
-                    }
-                });
-            });
-        }
+        // Always open mount manager GUI when whistle is used
+        plugin.getGUIManager().openMountGUI(player);
     }
     
     public NamespacedKey getWhistleKey() {

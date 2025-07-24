@@ -82,7 +82,7 @@ public class ConfirmationGUI {
             case "rename_mount":
                 return Material.NAME_TAG;
             default:
-                return Material.QUESTION_MARK_MINECART;
+                return Material.MINECART;
         }
     }
     

@@ -10,8 +10,6 @@ public enum MountType {
     STRIDER(EntityType.STRIDER, true, false, false),
     PIG(EntityType.PIG, true, false, false),
     LLAMA(EntityType.LLAMA, true, false, true),
-    BOAT(EntityType.BOAT, false, false, false),
-    CHEST_BOAT(EntityType.CHEST_BOAT, false, false, true),
     MINECART(EntityType.MINECART, false, false, false),
     CHEST_MINECART(EntityType.CHEST_MINECART, false, false, true),
     UNKNOWN(null, false, false, false);
@@ -78,11 +76,11 @@ public enum MountType {
     }
     
     public boolean isWaterSpecific() {
-        return this == BOAT || this == CHEST_BOAT;
+        return false; // No water-specific mounts in current implementation
     }
     
     public boolean isVehicle() {
-        return this == BOAT || this == CHEST_BOAT || this == MINECART || this == CHEST_MINECART;
+        return this == MINECART || this == CHEST_MINECART;
     }
     
     public boolean canBeTamed() {
@@ -102,8 +100,6 @@ public enum MountType {
             case STRIDER: return "Strider";
             case PIG: return "Pig";
             case LLAMA: return "Llama";
-            case BOAT: return "Boat";
-            case CHEST_BOAT: return "Chest Boat";
             case MINECART: return "Minecart";
             case CHEST_MINECART: return "Chest Minecart";
             default: return "Unknown";

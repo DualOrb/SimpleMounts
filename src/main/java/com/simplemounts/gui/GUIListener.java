@@ -2,11 +2,13 @@ package com.simplemounts.gui;
 
 import com.simplemounts.SimpleMounts;
 import com.simplemounts.data.MountData;
-import com.simplemounts.managers.MountManager;
+import com.simplemounts.core.MountManager;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import java.util.Set;
+import java.util.UUID;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -81,17 +83,6 @@ public class GUIListener implements Listener {
         String displayName = meta.getDisplayName();
         
         // Handle navigation buttons
-        if (displayName.contains("Close")) {
-            player.closeInventory();
-            return;
-        }
-        
-        if (displayName.contains("Refresh")) {
-            MountListGUI mountGUI = new MountListGUI(plugin, player, session.getPage());
-            mountGUI.refresh();
-            return;
-        }
-        
         if (displayName.contains("Next Page")) {
             MountListGUI mountGUI = new MountListGUI(plugin, player, session.getPage());
             mountGUI.nextPage();
@@ -104,12 +95,8 @@ public class GUIListener implements Listener {
             return;
         }
         
-        if (displayName.contains("Help")) {
-            // Show help message
-            player.sendMessage(ChatColor.GOLD + "=== Mount Manager Help ===");
-            player.sendMessage(ChatColor.YELLOW + "Left-click: Summon/Store mount");
-            player.sendMessage(ChatColor.YELLOW + "Right-click: View mount info");
-            player.sendMessage(ChatColor.YELLOW + "Use the whistle to open this GUI");
+        // Ignore clicks on player head (it's just decorative)
+        if (displayName.contains("'s Mounts")) {
             return;
         }
         
@@ -117,13 +104,8 @@ public class GUIListener implements Listener {
         if (isMountItem(clicked)) {
             String mountName = extractMountName(displayName);
             if (mountName != null) {
-                if (event.isLeftClick()) {
-                    // Left click - summon/store mount
-                    handleMountAction(player, mountName, clicked);
-                } else if (event.isRightClick()) {
-                    // Right click - show mount info
-                    guiManager.openMountInfoGUI(player, mountName);
-                }
+                // Any click - summon/store mount (removed right-click details)
+                handleMountAction(player, mountName, clicked);
             }
         }
     }
@@ -228,11 +210,38 @@ public class GUIListener implements Listener {
         switch (action.toLowerCase()) {
             case "summon_mount":
                 plugin.runAsync(() -> {
-                    mountManager.summonMount(player, mountName);
-                    plugin.runSync(() -> {
-                        player.closeInventory();
-                        guiManager.closeSession(player);
-                    });
+                    // First, store any currently active mount
+                    Set<UUID> activeMounts = mountManager.getPlayerActiveMounts(player.getUniqueId());
+                    if (!activeMounts.isEmpty()) {
+                        // Store the current mount before summoning the new one
+                        mountManager.storeCurrentMount(player).thenAccept(stored -> {
+                            if (stored) {
+                                // Now summon the new mount
+                                mountManager.summonMount(player, mountName).thenAccept(summoned -> {
+                                    plugin.runSync(() -> {
+                                        player.closeInventory();
+                                        guiManager.closeSession(player);
+                                        if (summoned) {
+                                            player.sendMessage(ChatColor.GREEN + "Switched to mount: " + mountName);
+                                        }
+                                    });
+                                });
+                            } else {
+                                plugin.runSync(() -> {
+                                    player.closeInventory();
+                                    guiManager.closeSession(player);
+                                });
+                            }
+                        });
+                    } else {
+                        // No active mount, just summon the requested one
+                        mountManager.summonMount(player, mountName).thenAccept(summoned -> {
+                            plugin.runSync(() -> {
+                                player.closeInventory();
+                                guiManager.closeSession(player);
+                            });
+                        });
+                    }
                 });
                 break;
                 
@@ -306,14 +315,10 @@ public class GUIListener implements Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         
-        // Don't close session if switching to another GUI
+        // Always close GUI session when inventory closes
+        // This prevents players from getting stuck in GUI interaction mode
         if (guiManager.hasActiveSession(player)) {
-            plugin.runTaskLater(() -> {
-                // Check if player opened another inventory immediately
-                if (player.getOpenInventory().getType() == InventoryType.CRAFTING) {
-                    guiManager.closeSession(player);
-                }
-            }, 1L); // Wait 1 tick
+            guiManager.closeSession(player);
         }
     }
     

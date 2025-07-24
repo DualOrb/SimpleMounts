@@ -82,6 +82,12 @@ public final class SimpleMounts extends JavaPlugin {
     private void initializeManagers() {
         configManager = new ConfigManager(this);
         databaseManager = new DatabaseManager(this);
+        
+        // Initialize InventorySerializer for MountAttributes to use
+        com.simplemounts.serialization.InventorySerializer inventorySerializer = 
+            new com.simplemounts.serialization.InventorySerializer(this);
+        com.simplemounts.data.MountAttributes.setInventorySerializer(inventorySerializer);
+        
         mountManager = new MountManager(this);
         shutdownHandler = new ShutdownHandler(this);
         guiManager = new GUIManager(this);

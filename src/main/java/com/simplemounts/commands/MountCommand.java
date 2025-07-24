@@ -21,7 +21,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
     private final MountManager mountManager;
     
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-        "summon", "store", "list", "release", "info", "rename", "gui", "reload", "help"
+        "summon", "store", "list", "release", "info", "rename", "gui", "reload", "help", "give"
     );
     
     public MountCommand(SimpleMounts plugin) {
@@ -70,6 +70,12 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             case "reload":
                 handleReload(player, args);
                 break;
+            case "debug":
+                handleDebug(player, args);
+                break;
+            case "give":
+                handleGive(player, args);
+                break;
             case "help":
             default:
                 showHelp(player);
@@ -103,16 +109,18 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        if (player.getVehicle() == null) {
-            sendMessage(player, "not_riding_mount");
-            return;
+        if (args.length > 1) {
+            // Store specific mount by name
+            String mountName = args[1];
+            plugin.runAsync(() -> {
+                mountManager.storeMount(player, mountName);
+            });
+        } else {
+            // Store currently ridden mount
+            plugin.runAsync(() -> {
+                mountManager.storeCurrentMount(player);
+            });
         }
-        
-        String mountName = args.length > 1 ? args[1] : generateMountName();
-        
-        plugin.runAsync(() -> {
-            mountManager.storeMount(player, mountName);
-        });
     }
     
     private void handleList(Player player, String[] args) {
@@ -370,9 +378,6 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             .anyMatch(uuid -> mountName.equals(mountManager.getMountName(uuid)));
     }
     
-    private String generateMountName() {
-        return "mount_" + System.currentTimeMillis();
-    }
     
     private boolean isValidMountName(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -439,6 +444,102 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         return new ArrayList<>();
     }
     
+    private void handleGive(Player player, String[] args) {
+        if (!player.hasPermission("simplemounts.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.YELLOW + "Usage: /mount give <item>");
+            player.sendMessage(ChatColor.YELLOW + "Available items: default, horse, strider, camel, donkey, mule, pig, llama");
+            return;
+        }
+        
+        String itemType = args[1].toLowerCase();
+        com.simplemounts.data.TamingItem tamingItem;
+        
+        switch (itemType) {
+            case "default":
+                tamingItem = plugin.getConfigManager().getTamingItem("default");
+                break;
+            case "horse":
+                tamingItem = plugin.getConfigManager().getTamingItem("HORSE");
+                break;
+            case "strider":
+                tamingItem = plugin.getConfigManager().getTamingItem("STRIDER");
+                break;
+            case "camel":
+                tamingItem = plugin.getConfigManager().getTamingItem("CAMEL");
+                break;
+            case "donkey":
+                tamingItem = plugin.getConfigManager().getTamingItem("DONKEY");
+                break;
+            case "mule":
+                tamingItem = plugin.getConfigManager().getTamingItem("MULE");
+                break;
+            case "pig":
+                tamingItem = plugin.getConfigManager().getTamingItem("PIG");
+                break;
+            case "llama":
+                tamingItem = plugin.getConfigManager().getTamingItem("LLAMA");
+                break;
+            default:
+                player.sendMessage(ChatColor.RED + "Unknown taming item type: " + itemType);
+                return;
+        }
+        
+        org.bukkit.inventory.ItemStack item = tamingItem.createItemStack();
+        player.getInventory().addItem(item);
+        player.sendMessage(ChatColor.GREEN + "Given you a " + itemType + " taming item!");
+    }
+    
+    private void handleDebug(Player player, String[] args) {
+        if (!player.hasPermission("simplemounts.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to use debug commands.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.YELLOW + "Debug commands:");
+            player.sendMessage(ChatColor.YELLOW + "/mount debug gui - Check GUI sessions");
+            player.sendMessage(ChatColor.YELLOW + "/mount debug cleargui [player] - Clear GUI session");
+            return;
+        }
+        
+        String debugCommand = args[1].toLowerCase();
+        
+        switch (debugCommand) {
+            case "gui":
+                // Show active GUI sessions
+                player.sendMessage(ChatColor.GREEN + "Active GUI sessions: " + plugin.getGUIManager().getActiveSessionCount());
+                break;
+                
+            case "cleargui":
+                if (args.length >= 3) {
+                    // Clear specific player's session
+                    Player targetPlayer = plugin.getServer().getPlayer(args[2]);
+                    if (targetPlayer != null) {
+                        plugin.getGUIManager().closeSession(targetPlayer);
+                        targetPlayer.closeInventory();
+                        player.sendMessage(ChatColor.GREEN + "Cleared GUI session for " + targetPlayer.getName());
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Player not found: " + args[2]);
+                    }
+                } else {
+                    // Clear sender's session
+                    plugin.getGUIManager().closeSession(player);
+                    player.closeInventory();
+                    player.sendMessage(ChatColor.GREEN + "Cleared your GUI session.");
+                }
+                break;
+                
+            default:
+                player.sendMessage(ChatColor.RED + "Unknown debug command: " + debugCommand);
+                break;
+        }
+    }
+    
     private boolean hasPermissionForSubcommand(Player player, String subcommand) {
         switch (subcommand) {
             case "summon":
@@ -454,6 +555,8 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             case "rename":
                 return player.hasPermission("simplemounts.rename");
             case "reload":
+                return player.hasPermission("simplemounts.admin");
+            case "debug":
                 return player.hasPermission("simplemounts.admin");
             case "help":
                 return true;

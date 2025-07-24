@@ -9,10 +9,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -24,6 +27,21 @@ public class GUIManager {
     public GUIManager(SimpleMounts plugin) {
         this.plugin = plugin;
         this.activeSessions = new ConcurrentHashMap<>();
+        
+        // Start periodic cleanup task to prevent stuck sessions
+        startCleanupTask();
+    }
+    
+    private void startCleanupTask() {
+        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            // Clean up sessions for offline players
+            activeSessions.entrySet().removeIf(entry -> !entry.getKey().isOnline());
+            
+            // Clean up sessions that are older than 5 minutes (safety net)
+            long fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000);
+            activeSessions.entrySet().removeIf(entry -> 
+                entry.getValue().getLastInteraction() < fiveMinutesAgo);
+        }, 1200L, 1200L); // Run every minute (20 ticks * 60 = 1200 ticks)
     }
     
     public void openMountGUI(Player player) {
@@ -70,6 +88,14 @@ public class GUIManager {
             player.closeInventory();
         }
         activeSessions.clear();
+    }
+    
+    public int getActiveSessionCount() {
+        return activeSessions.size();
+    }
+    
+    public Set<Player> getActiveSessionPlayers() {
+        return new HashSet<>(activeSessions.keySet());
     }
     
     // Utility methods for creating GUI items
@@ -119,6 +145,26 @@ public class GUIManager {
             item.setItemMeta(meta);
         }
         return item;
+    }
+    
+    public static ItemStack createPlayerHead(Player player) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(player);
+            meta.setDisplayName(ChatColor.GOLD + player.getName() + "'s Mounts");
+            
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "Click mounts to summon/store");
+            lore.add(ChatColor.GRAY + "Hover over mounts for details");
+            lore.add("");
+            lore.add(ChatColor.AQUA + "✦ Only one mount active at a time");
+            
+            meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            skull.setItemMeta(meta);
+        }
+        return skull;
     }
     
     public static void fillBackground(Inventory inventory) {
@@ -179,7 +225,6 @@ public class GUIManager {
             } else {
                 lore.add(ChatColor.GREEN + "» Click to Summon");
             }
-            lore.add(ChatColor.YELLOW + "» Right-click for Info");
             
             meta.setLore(lore);
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);

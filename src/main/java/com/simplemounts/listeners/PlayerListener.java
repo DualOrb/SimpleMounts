@@ -47,6 +47,9 @@ public class PlayerListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         
+        // Clean up any active GUI sessions to prevent memory leaks
+        plugin.getGUIManager().closeSession(player);
+        
         if (plugin.getConfigManager().autoStoreOnLogout()) {
             plugin.runAsync(() -> {
                 mountManager.storeAllPlayerMounts(player);

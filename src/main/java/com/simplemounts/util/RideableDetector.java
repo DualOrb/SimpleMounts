@@ -2,6 +2,7 @@ package com.simplemounts.util;
 
 import com.simplemounts.data.MountType;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.InventoryHolder;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -17,8 +18,6 @@ public class RideableDetector {
         EntityType.STRIDER,
         EntityType.PIG,
         EntityType.LLAMA,
-        EntityType.BOAT,
-        EntityType.CHEST_BOAT,
         EntityType.MINECART,
         EntityType.CHEST_MINECART
     ));
@@ -183,7 +182,8 @@ public class RideableDetector {
         }
         
         // Boats need water or special handling
-        if (entity.getType() == EntityType.BOAT || entity.getType() == EntityType.CHEST_BOAT) {
+        // Boats are not currently supported in this version
+        if (false) {
             return entity.getLocation().getBlock().getType().toString().contains("WATER") ||
                    entity.getLocation().getBlock().getType().toString().equals("AIR");
         }
@@ -205,9 +205,6 @@ public class RideableDetector {
             case LLAMA:
                 return 1;
             case CAMEL:
-                return 2;
-            case BOAT:
-            case CHEST_BOAT:
                 return 2;
             case MINECART:
             case CHEST_MINECART:

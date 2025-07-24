@@ -31,17 +31,17 @@ public class RecipeManager {
         NamespacedKey key = new NamespacedKey(plugin, "mount_whistle_recipe");
         ShapedRecipe recipe = new ShapedRecipe(key, whistleItem);
         
-        // Set the recipe pattern
+        // Set the recipe pattern - creates a magical mount whistle
         recipe.shape(
             " G ",
-            "GEG",
+            "GHG",
             " S "
         );
         
         // Set the ingredients
-        recipe.setIngredient('G', Material.GOLD_INGOT);
-        recipe.setIngredient('E', Material.ECHO_SHARD);
-        recipe.setIngredient('S', Material.SADDLE);
+        recipe.setIngredient('G', Material.GOLD_INGOT);     // Golden magic
+        recipe.setIngredient('H', Material.GOAT_HORN);      // Base horn
+        recipe.setIngredient('S', Material.SADDLE);         // Mount connection
         
         // Register the recipe
         try {

@@ -26,14 +26,16 @@ public class ItemInteractionListener implements Listener {
             return;
         }
         
-        // Cancel the default interaction
+        // Only handle right-click interactions (goat horn use)
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        
+        // Cancel the default goat horn sound
         event.setCancelled(true);
         
-        // Determine if it's a right-click or left-click
-        boolean isRightClick = event.getAction() == Action.RIGHT_CLICK_AIR || 
-                              event.getAction() == Action.RIGHT_CLICK_BLOCK;
-        
         // Handle the whistle use
-        mountWhistle.handleWhistleUse(event.getPlayer(), item, isRightClick);
+        mountWhistle.handleWhistleUse(event.getPlayer(), item);
     }
 }

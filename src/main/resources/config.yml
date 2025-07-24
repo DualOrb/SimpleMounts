@@ -275,6 +275,16 @@ messages:
   mount_protected: "&cThis mount belongs to another player!"
   entity_protected: "&cThis entity is protected and cannot be tamed!"
   shutdown_storage: "&eStoring all mounts due to server shutdown..."
+  invalid_mount_name: "&cInvalid mount name! Must be between {min} and {max} characters."
+  mount_name_exists: "&cYou already have a mount named '{name}'!"
+  no_permission: "&cYou don't have permission to do that!"
+  not_riding_mount: "&cYou are not currently riding a mount!"
+  mount_store_failed: "&cFailed to store mount. Please try again."
+  not_your_mount: "&cThis mount doesn't belong to you!"
+  mount_spawn_failed: "&cFailed to spawn mount. Please try again."
+  mount_summon_failed: "&cFailed to summon mount. Please try again."
+  already_riding: "&cYou are already riding a mount!"
+  mount_claimed_and_stored: "&aYou have successfully claimed and stored '{name}'!"
   
 # Enable debug logging
 debug: false
