@@ -4,6 +4,8 @@ import org.bukkit.entity.EntityType;
 
 public enum MountType {
     HORSE(EntityType.HORSE, true, true, false),
+    ZOMBIE_HORSE(EntityType.ZOMBIE_HORSE, true, true, false),
+    SKELETON_HORSE(EntityType.SKELETON_HORSE, true, true, false),
     DONKEY(EntityType.DONKEY, true, false, true),
     MULE(EntityType.MULE, true, false, true),
     CAMEL(EntityType.CAMEL, true, false, false),
@@ -94,6 +96,8 @@ public enum MountType {
     public String getDisplayName() {
         switch (this) {
             case HORSE: return "Horse";
+            case ZOMBIE_HORSE: return "Zombie Horse";
+            case SKELETON_HORSE: return "Skeleton Horse";
             case DONKEY: return "Donkey";
             case MULE: return "Mule";
             case CAMEL: return "Camel";

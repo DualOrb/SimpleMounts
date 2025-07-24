@@ -38,6 +38,22 @@ taming:
       custom_model_data: 100001
       consume_on_use: true
       
+    ZOMBIE_HORSE:
+      material: "ROTTEN_FLESH"
+      name: "&2Zombie Horse Taming Flesh"
+      lore:
+        - "&7Undead horses crave rotten flesh!"
+        - "&7Use to tame zombie horses"
+      consume_on_use: true
+      
+    SKELETON_HORSE:
+      material: "BONE"
+      name: "&fSkeleton Horse Taming Bone"
+      lore:
+        - "&7Skeletal horses are drawn to bones!"
+        - "&7Use to tame skeleton horses"
+      consume_on_use: true
+      
     DONKEY:
       material: "CARROT"
       name: "&6Donkey Taming Carrot"
@@ -103,6 +119,8 @@ mount_types:
   # Enable/disable specific mount types
   enabled_types:
     - HORSE
+    - ZOMBIE_HORSE
+    - SKELETON_HORSE
     - DONKEY
     - MULE
     - CAMEL
@@ -117,46 +135,35 @@ mount_types:
     restore_armor: true
     # Heal horse to full health on summon
     heal_on_summon: true
-    # Allow vanilla taming alongside custom system
-    allow_vanilla_taming: false
+  
+  zombie_horse:
+    # Heal horse to full health on summon
+    heal_on_summon: true
+  
+  skeleton_horse:
+    # Heal horse to full health on summon
+    heal_on_summon: true
   
   donkey:
     restore_chest: true
     heal_on_summon: true
-    allow_vanilla_taming: false
   
   mule:
     restore_chest: true
     heal_on_summon: true
-    allow_vanilla_taming: false
   
   camel:
-    # Restore camel decorations
-    restore_decorations: true
     heal_on_summon: true
-    # Summon camel in sitting position
-    summon_sitting: false
-    allow_vanilla_taming: false
   
   strider:
-    # Keep strider warm when summoned in overworld
-    keep_warm_outside_nether: true
     heal_on_summon: true
-    allow_vanilla_taming: false
   
   pig:
-    # Automatically equip carrot on stick when summoning
-    auto_equip_carrot: true
     heal_on_summon: true
-    allow_vanilla_taming: false
   
   llama:
     restore_chest: true
-    restore_decorations: true
     heal_on_summon: true
-    # Maintain caravan connections when possible
-    preserve_caravan: false
-    allow_vanilla_taming: false
 
 limits:
   # Default maximum mounts per player
@@ -165,11 +172,6 @@ limits:
   max_name_length: 16
   # Minimum mount name length
   min_name_length: 3
-  # Limit mounts by type (optional)
-  type_limits:
-    # Example: max 2 striders per player
-    # STRIDER: 2
-    # CAMEL: 1
 
 summoning:
   # Search radius for safe summoning spots
@@ -180,10 +182,6 @@ summoning:
   teleport_if_no_safe_spot: true
   # Remove existing mount when summoning new one
   auto_dismiss_existing: true
-  # Check for lava safety when summoning striders
-  strider_lava_safety: true
-  # Summon striders in lava if available
-  strider_prefer_lava: true
 
 storage:
   # Auto-store mounts on player logout
@@ -198,8 +196,6 @@ storage:
   auto_store_on_shutdown: true
   # Maximum time to wait for storage during shutdown (seconds)
   shutdown_storage_timeout: 30
-  # Auto-resummon mounts on player login
-  auto_resummon_on_login: false
   # Distance-based auto storage (always enabled)
   distance_storage:
     # Maximum distance before storing mount (max 64 blocks)
@@ -214,12 +210,8 @@ mount_behavior:
   prevent_mount_stealing: true
   # Allow mounts to take damage
   allow_mount_damage: true
-  # Heal mounts when summoned
-  heal_on_summon: true
   # Restore mount inventory on summon
   restore_inventory: true
-  # Keep mounts loaded even when owner is far away
-  keep_loaded: false
   # Prevent mount interaction by non-owners
   protect_mount_interaction: true
   # Prevent chest access by non-owners
@@ -236,68 +228,26 @@ shutdown:
 
 # Plugin compatibility settings
 compatibility:
-  # Check for conflicting plugins on startup
-  check_conflicts_on_startup: true
+  # MythicMobs compatibility
+  mythicmobs:
+    enabled: true
+    ignore_mythic_mobs: true  # Don't allow taming of MythicMobs
   
-  # Plugin-specific compatibility settings
-  plugins:
-    # Horses plugin compatibility
-    horses:
-      enabled: true
-      priority: "LOWEST"  # Event priority to avoid conflicts
-    
-    # MythicMobs compatibility
-    mythicmobs:
-      enabled: true
-      ignore_mythic_mobs: true  # Don't allow taming of MythicMobs
-    
-    # Citizens compatibility
-    citizens:
-      enabled: true
-      ignore_npcs: true  # Don't allow taming of NPC entities
-    
-    # EssentialsX compatibility
-    essentials:
-      enabled: true
-      respect_spawn_protection: true
+  # Citizens compatibility
+  citizens:
+    enabled: true
+    ignore_npcs: true  # Don't allow taming of NPC entities
+  
+  # EssentialsX compatibility
+  essentials:
+    enabled: true
+    respect_spawn_protection: true
 
-# Rideable entity detection settings
-rideable_detection:
-  # Automatically detect new rideable entities from updates
-  auto_detect_new_types: true
-  # Custom rideable entities (for modded servers)
-  custom_rideable_types: []
-    # Example for modded entities:
-    # - "MODDED_DRAGON"
-    # - "CUSTOM_MOUNT"
 
 # Inventory serialization settings
 inventory:
   # Include NBT data in serialization
   include_nbt_data: true
-  # Compress inventory data to save space
-  compress_data: true
-  # Maximum inventory slots to serialize per mount
-  max_slots: 27
-  # Handle nested inventories (shulker boxes, etc.)
-  handle_nested_inventories: true
-  # Custom item support
-  custom_items:
-    # Force NBT serialization for custom items (recommended)
-    force_nbt_for_custom: true
-    # Create placeholders for items that fail to deserialize
-    create_placeholders: true
-    # Validate custom item serialization before storing
-    validate_before_storing: true
-    # Supported custom item plugins
-    supported_plugins:
-      - "MMOItems"
-      - "ItemsAdder"
-      - "Oraxen"
-      - "EcoItems"
-      - "CustomItems"
-    # Log custom item serialization issues
-    log_custom_item_issues: true
 
 messages:
   prefix: "&8[&6SimpleMounts&8] "
@@ -334,6 +284,7 @@ messages:
   not_your_mount: "&cThis mount doesn't belong to you!"
   no_safe_location: "&cCould not find a safe location to summon your mount!"
   no_permission: "&cYou don't have permission to do that!"
+  rate_limit_exceeded: "&cPlease wait before using that command again!"
   
   # Name Validation Messages
   name_empty: "&cMount name cannot be empty!"
@@ -403,7 +354,7 @@ messages:
   
   # Admin Messages
   admin_no_permission: "&cYou don't have permission to use admin commands."
-  give_available_items: "&7Available items: default, horse, donkey, mule, camel, strider, pig, llama"
+  give_available_items: "&7Available items: default, horse, zombie_horse, skeleton_horse, donkey, mule, camel, strider, pig, llama"
   unknown_item_type: "&cUnknown taming item type: {type}"
   item_given: "&aGiven you a {type} taming item!"
   debug_no_permission: "&cYou don't have permission to use debug commands."
@@ -482,5 +433,6 @@ messages:
   no_active_mount_to_rename: "&cYou don't have any active mounts to rename!"
   multiple_active_mounts_rename: "&cYou have multiple active mounts. Please store all but one first."
   
-# Enable debug logging
+# Enable debug logging (disable for production)
 debug: false
+

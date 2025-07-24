@@ -27,6 +27,13 @@ public class MountManager {
     private final Map<UUID, Integer> entityMountIds;
     private final Map<UUID, Long> mountDistanceWarningTime;
     
+    // Rate limiting for production safety
+    private final Map<UUID, Long> lastClaimTime;
+    private final Map<UUID, Long> lastSummonTime;
+    private final Map<UUID, Integer> playerActionCount;
+    private static final long RATE_LIMIT_MS = 2000; // 2 seconds between actions
+    private static final int MAX_ACTIONS_PER_MINUTE = 30;
+    
     public MountManager(SimpleMounts plugin) {
         this.plugin = plugin;
         this.database = plugin.getDatabaseManager();
@@ -37,6 +44,9 @@ public class MountManager {
         this.entityMountNames = new ConcurrentHashMap<>();
         this.entityMountIds = new ConcurrentHashMap<>();
         this.mountDistanceWarningTime = new ConcurrentHashMap<>();
+        this.lastClaimTime = new ConcurrentHashMap<>();
+        this.lastSummonTime = new ConcurrentHashMap<>();
+        this.playerActionCount = new ConcurrentHashMap<>();
         
         startCleanupTask();
         startDistanceMonitoring();
@@ -116,6 +126,11 @@ public class MountManager {
     
     public CompletableFuture<Boolean> claimMount(Player player, Entity entity, String mountName) {
         return CompletableFuture.supplyAsync(() -> {
+            // Rate limiting check
+            if (!checkRateLimit(player, "claim")) {
+                sendMessage(player, "rate_limit_exceeded");
+                return false;
+            }
             if (!RideableDetector.isRideable(entity)) {
                 sendMessage(player, "invalid_mount_type");
                 return false;
@@ -267,6 +282,11 @@ public class MountManager {
     }
     
     public CompletableFuture<Boolean> summonMount(Player player, int mountId) {
+        // Rate limiting check
+        if (!checkRateLimit(player, "summon")) {
+            sendMessage(player, "rate_limit_exceeded");
+            return CompletableFuture.completedFuture(false);
+        }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         
         // Do database operations async
@@ -360,6 +380,11 @@ public class MountManager {
     }
     
     public CompletableFuture<Boolean> summonMount(Player player, String mountName) {
+        // Rate limiting check
+        if (!checkRateLimit(player, "summon")) {
+            sendMessage(player, "rate_limit_exceeded");
+            return CompletableFuture.completedFuture(false);
+        }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         
         // Do database operations async
@@ -1339,5 +1364,188 @@ public class MountManager {
                 return false;
             }
         });
+    }
+    
+    // Rate limiting methods for production safety
+    private boolean checkRateLimit(Player player, String action) {
+        UUID playerUuid = player.getUniqueId();
+        long currentTime = System.currentTimeMillis();
+        
+        // Check action-specific rate limits
+        Map<UUID, Long> actionMap = "claim".equals(action) ? lastClaimTime : lastSummonTime;
+        Long lastActionTime = actionMap.get(playerUuid);
+        
+        if (lastActionTime != null && (currentTime - lastActionTime) < RATE_LIMIT_MS) {
+            plugin.getLogger().info("Rate limit: Player " + player.getName() + " attempted " + action + " too quickly");
+            return false;
+        }
+        
+        // Check overall action count per minute
+        Integer actionCount = playerActionCount.get(playerUuid);
+        if (actionCount == null) {
+            actionCount = 0;
+        }
+        
+        if (actionCount >= MAX_ACTIONS_PER_MINUTE) {
+            plugin.getLogger().info("Rate limit: Player " + player.getName() + " exceeded max actions per minute");
+            return false;
+        }
+        
+        // Update counters
+        actionMap.put(playerUuid, currentTime);
+        playerActionCount.put(playerUuid, actionCount + 1);
+        
+        // Schedule counter reset (cleanup old entries every minute)
+        plugin.runSyncDelayed(() -> {
+            Integer count = playerActionCount.get(playerUuid);
+            if (count != null && count > 0) {
+                playerActionCount.put(playerUuid, Math.max(0, count - 1));
+            }
+        }, 1200L); // 60 seconds in ticks
+        
+        return true;
+    }
+    
+    /**
+     * Check distance-based storage for a player
+     */
+    public void checkDistanceStorage(Player player) {
+        Set<UUID> activeMounts = playerActiveMounts.get(player.getUniqueId());
+        if (activeMounts == null || activeMounts.isEmpty()) {
+            return;
+        }
+        
+        double maxDistance = config.getDistanceStorageMaxDistance();
+        int gracePeriod = config.getDistanceStorageGracePeriod() * 1000; // Convert to milliseconds
+        long currentTime = System.currentTimeMillis();
+        
+        for (UUID entityUuid : new HashSet<>(activeMounts)) {
+            Entity entity = plugin.getServer().getEntity(entityUuid);
+            if (entity == null) {
+                // Entity no longer exists, clean up
+                removeActiveMountTracking(entityUuid);
+                continue;
+            }
+            
+            // Check if entity is in the same world as player
+            if (!entity.getWorld().equals(player.getWorld())) {
+                // Different world, consider for auto-storage
+                Long warningStartTime = mountDistanceWarningTime.get(entityUuid);
+                if (warningStartTime == null) {
+                    // Start grace period
+                    mountDistanceWarningTime.put(entityUuid, currentTime);
+                    String mountName = entityMountNames.get(entityUuid);
+                    if (mountName != null) {
+                        sendMessage(player, config.getMessage("mount_too_far_warning")
+                            .replace("{name}", mountName)
+                            .replace("{grace}", String.valueOf(gracePeriod / 1000)));
+                    }
+                } else if (currentTime - warningStartTime >= gracePeriod) {
+                    // Grace period expired, store mount
+                    String mountName = entityMountNames.get(entityUuid);
+                    if (mountName != null) {
+                        plugin.runSync(() -> {
+                            try {
+                                boolean stored = storeMountSync(player, entity, mountName);
+                                if (stored) {
+                                    sendMessage(player, config.getMessage("mount_auto_stored_distance")
+                                        .replace("{name}", mountName));
+                                }
+                            } catch (Exception e) {
+                                plugin.getLogger().warning("Error auto-storing mount " + mountName + " for " + player.getName() + ": " + e.getMessage());
+                            }
+                        });
+                    }
+                    mountDistanceWarningTime.remove(entityUuid);
+                }
+                continue;
+            }
+            
+            // Check distance in same world
+            double distance = entity.getLocation().distance(player.getLocation());
+            if (distance > maxDistance) {
+                Long warningStartTime = mountDistanceWarningTime.get(entityUuid);
+                if (warningStartTime == null) {
+                    // Start grace period
+                    mountDistanceWarningTime.put(entityUuid, currentTime);
+                    String mountName = entityMountNames.get(entityUuid);
+                    if (mountName != null) {
+                        sendMessage(player, config.getMessage("mount_too_far_warning")
+                            .replace("{name}", mountName)
+                            .replace("{grace}", String.valueOf(gracePeriod / 1000)));
+                    }
+                } else if (currentTime - warningStartTime >= gracePeriod) {
+                    // Grace period expired, store mount
+                    String mountName = entityMountNames.get(entityUuid);
+                    if (mountName != null) {
+                        plugin.runSync(() -> {
+                            try {
+                                boolean stored = storeMountSync(player, entity, mountName);
+                                if (stored) {
+                                    sendMessage(player, config.getMessage("mount_auto_stored_distance")
+                                        .replace("{name}", mountName));
+                                }
+                            } catch (Exception e) {
+                                plugin.getLogger().warning("Error auto-storing mount " + mountName + " for " + player.getName() + ": " + e.getMessage());
+                            }
+                        });
+                    }
+                    mountDistanceWarningTime.remove(entityUuid);
+                }
+            } else {
+                // Mount is close enough, cancel any existing warning
+                mountDistanceWarningTime.remove(entityUuid);
+            }
+        }
+    }
+    
+    /**
+     * Remove tracking for a specific mount entity
+     */
+    private void removeActiveMountTracking(UUID entityUuid) {
+        // Find and remove from player active mounts
+        for (Set<UUID> mounts : playerActiveMounts.values()) {
+            mounts.remove(entityUuid);
+        }
+        
+        // Remove from entity tracking maps
+        entityMountNames.remove(entityUuid);
+        entityMountIds.remove(entityUuid);
+        mountDistanceWarningTime.remove(entityUuid);
+        
+        // Remove from database
+        database.removeActiveMount(entityUuid);
+    }
+    
+    /**
+     * Clean up player data when they disconnect
+     */
+    public void cleanupPlayerData(UUID playerUuid) {
+        try {
+            // Clean up active mounts tracking
+            Set<UUID> activeMounts = playerActiveMounts.remove(playerUuid);
+            if (activeMounts != null) {
+                for (UUID entityUuid : activeMounts) {
+                    entityMountNames.remove(entityUuid);
+                    entityMountIds.remove(entityUuid);
+                }
+            }
+            
+            // Clean up rate limiting data
+            lastClaimTime.remove(playerUuid);
+            lastSummonTime.remove(playerUuid);
+            playerActionCount.remove(playerUuid);
+            mountDistanceWarningTime.entrySet().removeIf(entry -> {
+                // Remove distance warnings for this player's mounts
+                UUID entityUuid = entry.getKey();
+                return !playerActiveMounts.values().stream()
+                    .anyMatch(mounts -> mounts.contains(entityUuid));
+            });
+            
+            plugin.getLogger().info("Cleaned up data for disconnected player: " + playerUuid);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error cleaning up player data for " + playerUuid + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

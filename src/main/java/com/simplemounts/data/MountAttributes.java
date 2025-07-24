@@ -61,6 +61,16 @@ public class MountAttributes {
                 }
             }
             
+            if (horse instanceof ZombieHorse) {
+                ZombieHorse zh = (ZombieHorse) horse;
+                attributes.set("isZombie", true);
+            }
+            
+            if (horse instanceof SkeletonHorse) {
+                SkeletonHorse sh = (SkeletonHorse) horse;
+                attributes.set("isSkeleton", true);
+            }
+            
             if (horse instanceof ChestedHorse) {
                 ChestedHorse chested = (ChestedHorse) horse;
                 attributes.set("carryingChest", chested.isCarryingChest());
@@ -200,6 +210,16 @@ public class MountAttributes {
                         h.getInventory().setArmor(armor);
                     }
                 }
+            }
+            
+            if (horse instanceof ZombieHorse) {
+                ZombieHorse zh = (ZombieHorse) horse;
+                // Zombie horses don't support armor in 1.21.5
+            }
+            
+            if (horse instanceof SkeletonHorse) {
+                SkeletonHorse sh = (SkeletonHorse) horse;
+                // Skeleton horses don't support armor in 1.21.5
             }
             
             if (horse instanceof ChestedHorse) {

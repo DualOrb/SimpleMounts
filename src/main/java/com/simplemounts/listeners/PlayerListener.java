@@ -11,6 +11,10 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 public class PlayerListener implements Listener {
     
     private final SimpleMounts plugin;
@@ -50,8 +54,44 @@ public class PlayerListener implements Listener {
         // Store mounts IMMEDIATELY before chunks unload - run synchronously
         if (plugin.getConfigManager().autoStoreOnLogout()) {
             try {
+                plugin.getLogger().info("DEBUG: Player " + player.getName() + " logging out - attempting to store mounts");
+                
+                // Force all mounts to stay loaded during storage
+                Set<UUID> activeMounts = mountManager.getPlayerActiveMounts(player.getUniqueId());
+                Set<org.bukkit.Chunk> chunksToKeepLoaded = new HashSet<>();
+                
+                // Load and force chunks for all active mounts
+                if (activeMounts != null) {
+                    for (UUID entityUuid : activeMounts) {
+                        org.bukkit.entity.Entity entity = plugin.getServer().getEntity(entityUuid);
+                        if (entity != null) {
+                            org.bukkit.Chunk chunk = entity.getLocation().getChunk();
+                            if (!chunk.isLoaded()) {
+                                chunk.load();
+                            }
+                            chunk.setForceLoaded(true);
+                            chunksToKeepLoaded.add(chunk);
+                        }
+                    }
+                }
+                
+                // Store all mounts synchronously
                 mountManager.storeAllPlayerMountsSync(player);
-                plugin.getLogger().info("Stored mounts for " + player.getName() + " during logout");
+                plugin.getLogger().info("Successfully stored mounts for " + player.getName() + " during logout");
+                
+                // Schedule chunk cleanup for later
+                if (!chunksToKeepLoaded.isEmpty()) {
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        for (org.bukkit.Chunk chunk : chunksToKeepLoaded) {
+                            try {
+                                chunk.setForceLoaded(false);
+                            } catch (Exception ignored) {
+                                // Chunk may already be unloaded
+                            }
+                        }
+                    }, 40L); // 2 second delay
+                }
+                
             } catch (Exception e) {
                 plugin.getLogger().severe("Failed to store mounts for " + player.getName() + " during logout: " + e.getMessage());
                 e.printStackTrace();
@@ -60,6 +100,11 @@ public class PlayerListener implements Listener {
         
         // Clean up any active GUI sessions to prevent memory leaks
         plugin.getGUIManager().closeSession(player);
+        
+        // Clean up player data from memory to prevent memory leaks (delayed to allow storage to complete)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            mountManager.cleanupPlayerData(player.getUniqueId());
+        }, 60L); // 3 second delay
     }
     
     @EventHandler(priority = EventPriority.MONITOR)

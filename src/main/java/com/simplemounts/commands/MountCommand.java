@@ -21,7 +21,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
     private final MountManager mountManager;
     
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-        "summon", "store", "list", "release", "info", "rename", "gui", "reload", "help", "give"
+        "summon", "store", "list", "release", "info", "rename", "gui", "reload", "debug", "system", "help", "give"
     );
     
     public MountCommand(SimpleMounts plugin) {
@@ -74,6 +74,9 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 break;
             case "debug":
                 handleDebug(player, args);
+                break;
+            case "system":
+                handleSystem(player, args);
                 break;
             case "give":
                 handleGive(player, args);
@@ -799,7 +802,7 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         
         if (args.length < 2) {
             player.sendMessage(ChatColor.YELLOW + "Usage: /mount give <item>");
-            player.sendMessage(ChatColor.YELLOW + "Available items: cookie, default, horse, donkey, mule, camel, strider, pig, llama");
+            player.sendMessage(ChatColor.YELLOW + "Available items: cookie, default, horse, zombie_horse, skeleton_horse, donkey, mule, camel, strider, pig, llama");
             return;
         }
         
@@ -813,6 +816,12 @@ public class MountCommand implements CommandExecutor, TabCompleter {
                 break;
             case "horse":
                 tamingItem = plugin.getConfigManager().getTamingItem("HORSE");
+                break;
+            case "zombie_horse":
+                tamingItem = plugin.getConfigManager().getTamingItem("ZOMBIE_HORSE");
+                break;
+            case "skeleton_horse":
+                tamingItem = plugin.getConfigManager().getTamingItem("SKELETON_HORSE");
                 break;
             case "strider":
                 tamingItem = plugin.getConfigManager().getTamingItem("STRIDER");
@@ -888,6 +897,76 @@ public class MountCommand implements CommandExecutor, TabCompleter {
         }
     }
     
+    private void handleSystem(Player player, String[] args) {
+        if (!player.hasPermission("simplemounts.admin")) {
+            player.sendMessage(ChatColor.RED + "You don't have permission to use system commands.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.YELLOW + "System commands:");
+            player.sendMessage(ChatColor.YELLOW + "/mount system status - Show system health");
+            player.sendMessage(ChatColor.YELLOW + "/mount system maintenance - Run database maintenance");
+            player.sendMessage(ChatColor.YELLOW + "/mount system stats - Show database statistics");
+            return;
+        }
+        
+        String systemCommand = args[1].toLowerCase();
+        
+        switch (systemCommand) {
+            case "status":
+                // Show system health
+                player.sendMessage(ChatColor.GREEN + "=== SimpleMounts System Status ===");
+                player.sendMessage(ChatColor.YELLOW + "Version: " + plugin.getDescription().getVersion());
+                player.sendMessage(ChatColor.YELLOW + "Active sessions: " + plugin.getGUIManager().getActiveSessionCount());
+                
+                // Check memory usage
+                Runtime runtime = Runtime.getRuntime();
+                long maxMemory = runtime.maxMemory() / 1024 / 1024; // MB
+                long totalMemory = runtime.totalMemory() / 1024 / 1024; // MB
+                long freeMemory = runtime.freeMemory() / 1024 / 1024; // MB
+                long usedMemory = totalMemory - freeMemory;
+                
+                player.sendMessage(ChatColor.YELLOW + "Memory: " + usedMemory + "MB / " + maxMemory + "MB");
+                player.sendMessage(ChatColor.YELLOW + "Online players: " + plugin.getServer().getOnlinePlayers().size());
+                break;
+                
+            case "maintenance":
+                player.sendMessage(ChatColor.YELLOW + "Starting database maintenance...");
+                plugin.runAsync(() -> {
+                    plugin.getDatabaseManager().performMaintenanceCleanup().thenAccept(success -> {
+                        plugin.runSync(() -> {
+                            if (success) {
+                                player.sendMessage(ChatColor.GREEN + "Database maintenance completed successfully!");
+                            } else {
+                                player.sendMessage(ChatColor.RED + "Database maintenance encountered errors. Check console.");
+                            }
+                        });
+                    });
+                });
+                break;
+                
+            case "stats":
+                player.sendMessage(ChatColor.YELLOW + "Fetching database statistics...");
+                plugin.runAsync(() -> {
+                    plugin.getDatabaseManager().getDatabaseStats().thenAccept(totalMounts -> {
+                        plugin.runSync(() -> {
+                            if (totalMounts >= 0) {
+                                player.sendMessage(ChatColor.GREEN + "Database statistics logged to console.");
+                            } else {
+                                player.sendMessage(ChatColor.RED + "Failed to fetch database statistics.");
+                            }
+                        });
+                    });
+                });
+                break;
+                
+            default:
+                player.sendMessage(ChatColor.RED + "Unknown system command: " + systemCommand);
+                break;
+        }
+    }
+    
     private boolean hasPermissionForSubcommand(Player player, String subcommand) {
         switch (subcommand) {
             case "summon":
@@ -905,6 +984,8 @@ public class MountCommand implements CommandExecutor, TabCompleter {
             case "reload":
                 return player.hasPermission("simplemounts.admin");
             case "debug":
+                return player.hasPermission("simplemounts.admin");
+            case "system":
                 return player.hasPermission("simplemounts.admin");
             case "help":
                 return true;

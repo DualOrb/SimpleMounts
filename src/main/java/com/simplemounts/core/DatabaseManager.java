@@ -645,4 +645,93 @@ public class DatabaseManager {
             return null;
         });
     }
+    
+    // Production database maintenance methods
+    public CompletableFuture<Boolean> performMaintenanceCleanup() {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection connection = getConnection()) {
+                // Clean up old mount data (older than 90 days and not accessed in 30 days)
+                String cleanupOldMounts = """
+                    DELETE FROM player_mounts 
+                    WHERE created_at < ? AND last_accessed < ?
+                """;
+                
+                long ninetyDaysAgo = System.currentTimeMillis() - (90L * 24 * 60 * 60 * 1000);
+                long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
+                
+                try (PreparedStatement stmt = connection.prepareStatement(cleanupOldMounts)) {
+                    stmt.setLong(1, ninetyDaysAgo);
+                    stmt.setLong(2, thirtyDaysAgo);
+                    int deletedMounts = stmt.executeUpdate();
+                    
+                    if (deletedMounts > 0) {
+                        plugin.getLogger().info("Database maintenance: Cleaned up " + deletedMounts + " old unused mounts");
+                    }
+                }
+                
+                // Clean up active mounts for players who haven't been online in 7 days  
+                String cleanupInactivePlayers = """
+                    DELETE FROM active_mounts 
+                    WHERE spawned_at < ?
+                """;
+                
+                long sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
+                
+                try (PreparedStatement stmt = connection.prepareStatement(cleanupInactivePlayers)) {
+                    stmt.setLong(1, sevenDaysAgo);
+                    int deletedActive = stmt.executeUpdate();
+                    
+                    if (deletedActive > 0) {
+                        plugin.getLogger().info("Database maintenance: Cleaned up " + deletedActive + " stale active mount entries");
+                    }
+                }
+                
+                // Vacuum database to reclaim space
+                try (PreparedStatement stmt = connection.prepareStatement("VACUUM")) {
+                    stmt.execute();
+                    plugin.getLogger().info("Database maintenance: VACUUM completed");
+                }
+                
+                return true;
+                
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to perform database maintenance", e);
+                return false;
+            }
+        });
+    }
+    
+    public CompletableFuture<Integer> getDatabaseStats() {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection connection = getConnection()) {
+                int totalMounts = 0;
+                int activeMounts = 0;
+                
+                // Count total mounts
+                try (PreparedStatement stmt = connection.prepareStatement("SELECT COUNT(*) FROM player_mounts")) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            totalMounts = rs.getInt(1);
+                        }
+                    }
+                }
+                
+                // Count active mounts
+                try (PreparedStatement stmt = connection.prepareStatement("SELECT COUNT(*) FROM active_mounts")) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            activeMounts = rs.getInt(1);
+                        }
+                    }
+                }
+                
+                plugin.getLogger().info("Database stats: " + totalMounts + " total mounts, " + activeMounts + " currently active");
+                return totalMounts;
+                
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to get database stats", e);
+                return -1;
+            }
+        });
+    }
 }

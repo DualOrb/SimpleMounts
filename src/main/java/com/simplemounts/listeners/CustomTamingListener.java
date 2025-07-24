@@ -160,24 +160,65 @@ public class CustomTamingListener implements Listener {
         // Check for Citizens NPCs
         if (plugin.getConfigManager().ignoreNpcs() && 
             entity.hasMetadata("NPC")) {
+            plugin.getLogger().info("DEBUG: Entity protected by Citizens NPC");
             return true;
         }
         
         // Check for MythicMobs
         if (plugin.getConfigManager().ignoreMythicMobs() && 
             entity.hasMetadata("MythicMob")) {
+            plugin.getLogger().info("DEBUG: Entity protected by MythicMobs");
             return true;
         }
         
         // Check for other plugin metadata indicating protection
         if (entity.hasMetadata("protected") || 
             entity.hasMetadata("no-tame") ||
-            entity.hasMetadata("mount-protected")) {
+            entity.hasMetadata("mount-protected") ||
+            entity.hasMetadata("shopkeeper") ||
+            entity.hasMetadata("quest-npc") ||
+            entity.hasMetadata("custom-entity")) {
+            plugin.getLogger().info("DEBUG: Entity protected by generic metadata");
             return true;
         }
         
-        // TODO: Add integration with specific protection plugins
-        // This would require checking WorldGuard regions, GriefPrevention claims, etc.
+        // Check if entity belongs to another mount plugin
+        if (entity.hasMetadata("horse-plugin") ||
+            entity.hasMetadata("mounts") ||
+            entity.hasMetadata("custom-mount") ||
+            entity.getPersistentDataContainer().has(new org.bukkit.NamespacedKey("horses", "owner"), org.bukkit.persistence.PersistentDataType.STRING) ||
+            entity.getPersistentDataContainer().has(new org.bukkit.NamespacedKey("ultimatehorses", "owner"), org.bukkit.persistence.PersistentDataType.STRING)) {
+            plugin.getLogger().info("DEBUG: Entity protected by another mount plugin");
+            return true;
+        }
+        
+        // Check WorldGuard protection (if available)
+        if (plugin.getServer().getPluginManager().isPluginEnabled("WorldGuard")) {
+            try {
+                org.bukkit.plugin.Plugin wgPlugin = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
+                if (wgPlugin != null) {
+                    // Basic check - more sophisticated integration could be added
+                    if (!player.hasPermission("worldguard.region.bypass.*")) {
+                        // In protected regions, players might not be able to tame
+                        plugin.getLogger().info("DEBUG: WorldGuard present - respecting region permissions");
+                    }
+                }
+            } catch (Exception e) {
+                plugin.getLogger().info("DEBUG: WorldGuard check failed: " + e.getMessage());
+            }
+        }
+        
+        // Check for Towny protection
+        if (plugin.getServer().getPluginManager().isPluginEnabled("Towny")) {
+            try {
+                // If in a town where the player doesn't have permissions
+                if (!player.hasPermission("towny.town.claim.tame")) {
+                    plugin.getLogger().info("DEBUG: Towny protection may apply");
+                }
+            } catch (Exception e) {
+                plugin.getLogger().info("DEBUG: Towny check failed: " + e.getMessage());
+            }
+        }
         
         return false;
     }

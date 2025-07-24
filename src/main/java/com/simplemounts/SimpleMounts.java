@@ -12,6 +12,7 @@ import com.simplemounts.listeners.InventoryListener;
 import com.simplemounts.listeners.ItemInteractionListener;
 import com.simplemounts.listeners.MountInteractionListener;
 import com.simplemounts.listeners.PlayerListener;
+import com.simplemounts.listeners.ServerListener;
 import com.simplemounts.recipes.RecipeManager;
 import com.simplemounts.util.NameValidator;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -43,6 +44,8 @@ public final class SimpleMounts extends JavaPlugin {
             registerListeners();
             registerRecipes();
             registerShutdownHandler();
+            scheduleDatabaseMaintenance();
+            startDistanceBasedStorage();
             
             long loadTime = System.currentTimeMillis() - startTime;
             getLogger().info("SimpleMounts v" + getDescription().getVersion() + " enabled in " + loadTime + "ms");
@@ -125,6 +128,7 @@ public final class SimpleMounts extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(new ItemInteractionListener(this), this);
+        getServer().getPluginManager().registerEvents(new ServerListener(this), this);
         
         getLogger().info("Event listeners registered successfully");
     }
@@ -142,6 +146,53 @@ public final class SimpleMounts extends JavaPlugin {
         }));
         
         getLogger().info("Shutdown handler registered successfully");
+    }
+    
+    private void scheduleDatabaseMaintenance() {
+        // Schedule database maintenance every 6 hours
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                runAsync(() -> {
+                    getLogger().info("Starting scheduled database maintenance...");
+                    databaseManager.performMaintenanceCleanup().thenAccept(success -> {
+                        if (success) {
+                            getLogger().info("Database maintenance completed successfully");
+                        } else {
+                            getLogger().warning("Database maintenance encountered errors");
+                        }
+                    });
+                    
+                    // Log database stats
+                    databaseManager.getDatabaseStats();
+                });
+            }
+        }.runTaskTimerAsynchronously(this, 72000L, 432000L); // Start after 1 hour, repeat every 6 hours
+        
+        getLogger().info("Database maintenance scheduled successfully");
+    }
+    
+    private void startDistanceBasedStorage() {
+        // Start distance-based auto storage task
+        int checkInterval = configManager.getDistanceStorageCheckInterval();
+        
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // Run distance checks for all online players
+                for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                    runAsync(() -> {
+                        try {
+                            mountManager.checkDistanceStorage(player);
+                        } catch (Exception e) {
+                            getLogger().log(Level.WARNING, "Error during distance check for " + player.getName(), e);
+                        }
+                    });
+                }
+            }
+        }.runTaskTimerAsynchronously(this, checkInterval, checkInterval);
+        
+        getLogger().info("Distance-based storage task started (check interval: " + checkInterval + " ticks)");
     }
     
     public void reloadConfiguration() {
